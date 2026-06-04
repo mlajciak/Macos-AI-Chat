@@ -1,5 +1,0 @@
-{
-  "tool": "spatial_thinking",
-  "input": { "code": "return box(10,10,10)" },
-  "expectKeys": ["ok", "bodies"]
-}

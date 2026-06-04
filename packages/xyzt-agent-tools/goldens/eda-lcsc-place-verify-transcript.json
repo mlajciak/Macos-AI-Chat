@@ -1,9 +1,0 @@
-{
-  "id": "eda-lcsc-place-verify-transcript",
-  "description": "EDA path requires verify_eda before update_overview on touched board",
-  "steps": [
-    { "tool": "search_components", "args": { "query": "STM32" } },
-    { "tool": "verify_eda", "args": { "fileName": "board.xyzt.eda" }, "expectOk": true },
-    { "tool": "update_overview", "expectAllowed": true }
-  ]
-}

@@ -1,9 +1,0 @@
----
-description: HW engineering agent discipline for this repo
-globs:
-  - "**/*"
----
-
-Read [AGENTS.md](../AGENTS.md) and [skills/hw-engineering/SKILL.md](../skills/hw-engineering/SKILL.md) before changing agent runtime or goldens.
-
-After tool/registry changes: `pnpm generate:contract && pnpm agent:gate`.

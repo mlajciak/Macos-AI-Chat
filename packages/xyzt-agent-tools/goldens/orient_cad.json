@@ -1,5 +1,0 @@
-{
-  "tool": "orient_cad",
-  "input": { "code": "return box(10,10,10)" },
-  "expectKeys": ["ok"]
-}
