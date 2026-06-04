@@ -1,0 +1,156 @@
+{
+  "version": 0,
+  "generatedAt": "2026-05-24T18:12:18.149Z",
+  "tools": [
+    {
+      "name": "ask_user",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "update_plan",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "create_cad",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "create_eda",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "create_drawing",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "create_simulation",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "update_overview",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "edit_file",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "patch_file",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "delete_file",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "read_file",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "list_files",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "run_script",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "validate_script",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "verify_eda",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "probe_model",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "run_simulation",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "get_capabilities",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "get_simulation_backends",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "explain_diagnostics",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "validate_project",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "validate_simulation",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "export_step",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "export_stl",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "export_gerber_bundle",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "export_bom",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "export_project_package",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "build_project_run_plan",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "write_artifact",
+      "desktop": true,
+      "ai_stream_schema": true
+    },
+    {
+      "name": "run_verify_profile",
+      "desktop": true,
+      "ai_stream_schema": true
+    }
+  ]
+}

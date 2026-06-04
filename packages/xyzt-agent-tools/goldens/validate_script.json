@@ -1,0 +1,5 @@
+{
+  "tool": "validate_script",
+  "input": { "code": "return box(10,10,10)" },
+  "expectKeys": ["ok"]
+}

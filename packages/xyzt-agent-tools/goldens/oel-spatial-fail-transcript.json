@@ -1,0 +1,8 @@
+{
+  "tool": "orient_cad",
+  "input": {
+    "code": "return union(box(10,10,10).translate(0,0,0), box(10,10,10).translate(2,0,0))",
+    "checks": [{ "kind": "gap", "bodyA": 0, "bodyB": 1, "minMm": 5 }]
+  },
+  "expectKeys": ["ok", "spatial", "ledger", "gates"]
+}

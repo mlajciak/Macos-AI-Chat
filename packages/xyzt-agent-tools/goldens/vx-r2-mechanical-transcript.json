@@ -1,0 +1,25 @@
+{
+  "id": "vx-r2-mechanical",
+  "steps": [
+    {
+      "tool": "validate_script",
+      "input": { "code": "return box(10,10,10)" },
+      "expectKeys": ["ok"]
+    },
+    {
+      "tool": "run_script",
+      "input": { "code": "return box(10,10,10)" },
+      "expectKeys": ["ok", "meshCount"]
+    },
+    {
+      "tool": "spatial_thinking",
+      "input": { "code": "return box(10,10,10)" },
+      "expectKeys": ["ok", "bodies"]
+    },
+    {
+      "tool": "run_verify_profile",
+      "input": { "code": "return box(10,10,10)", "profile": "hobby" },
+      "expectKeys": ["ok"]
+    }
+  ]
+}

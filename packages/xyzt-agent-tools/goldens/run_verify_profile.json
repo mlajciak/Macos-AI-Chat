@@ -1,0 +1,5 @@
+{
+  "tool": "run_verify_profile",
+  "input": { "code": "return box(10,10,10)", "profile": "hobby" },
+  "expectKeys": ["ok"]
+}

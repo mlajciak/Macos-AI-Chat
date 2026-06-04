@@ -1,0 +1,8 @@
+{
+  "tool": "verify_eda",
+  "input": {
+    "code": "return circuit().constraints('breakout').board(28,16).add(resistor('R1','10k').at(5,5)).route().compile()",
+    "profile": "fab"
+  },
+  "expectKeys": ["ok"]
+}

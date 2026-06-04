@@ -1,0 +1,2 @@
+const bracket = box(60, 40, 12).fillet(2)
+return bracket.color('#888')

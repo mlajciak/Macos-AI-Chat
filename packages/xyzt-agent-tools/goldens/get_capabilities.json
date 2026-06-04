@@ -1,0 +1,5 @@
+{
+  "tool": "get_capabilities",
+  "input": {},
+  "expectKeys": ["version", "entries"]
+}

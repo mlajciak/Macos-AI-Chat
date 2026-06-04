@@ -1,0 +1,25 @@
+{
+  "id": "hw-sim-smoke",
+  "steps": [
+    {
+      "tool": "get_simulation_backends",
+      "input": {},
+      "expectKeys": ["backends"]
+    },
+    {
+      "tool": "validate_simulation",
+      "input": {
+        "json": {
+          "version": 0,
+          "kind": "spice",
+          "sources": [],
+          "analyses": [{ "type": "tran", "tstop": 1 }],
+          "deck": "* hw-sim-smoke",
+          "probes": ["out"],
+          "signals": []
+        }
+      },
+      "expectKeys": ["valid"]
+    }
+  ]
+}

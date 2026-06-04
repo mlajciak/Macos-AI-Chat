@@ -1,0 +1,7 @@
+{
+  "tool": "get_params",
+  "input": {
+    "code": "const w = Param.number(\"Width\", 20, { min: 1 })\nreturn box(w, 10, 5)"
+  },
+  "expectKeys": ["ok", "params"]
+}

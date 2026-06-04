@@ -1,0 +1,5 @@
+{
+  "tool": "pel_plan",
+  "input": { "goalSummary": "widget" },
+  "expectKeys": ["ok"]
+}
