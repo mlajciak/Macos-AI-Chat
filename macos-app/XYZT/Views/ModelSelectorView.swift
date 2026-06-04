@@ -6,6 +6,7 @@ struct ModelSelectorView: View {
     let fontSettings: AppFontSettings
     let glassMaterial: NSVisualEffectView.Material
     let isDisabled: Bool
+    var menuLabel: String = "Agent"
     @Environment(\.appThemeColors) private var theme
 
     private var selected: ChatModel? {
@@ -19,10 +20,10 @@ struct ModelSelectorView: View {
             arrowEdge: .top,
             glassMaterial: glassMaterial,
             menuMinWidth: 220,
-            tooltip: models.isEmpty ? "Choose models in Settings" : "Select model"
+            tooltip: models.isEmpty ? "Add models in Settings → Models" : "Agent model"
         ) {
             HStack(spacing: 6) {
-                Text(selected?.name ?? "No models")
+                Text(selected?.name ?? menuLabel)
                     .font(fontSettings.font(for: .caption, weight: .medium))
                     .foregroundStyle(models.isEmpty ? theme.secondaryMuted : theme.primaryText)
                     .lineLimit(1)
@@ -41,7 +42,7 @@ struct ModelSelectorView: View {
             )
         } menuContent: { close in
             if models.isEmpty {
-                Text("Add models in Settings")
+                Text("Add in Settings → Models")
                     .font(fontSettings.font(for: .caption))
                     .foregroundStyle(theme.secondary)
                     .padding(.horizontal, 12)

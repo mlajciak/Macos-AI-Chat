@@ -100,7 +100,10 @@ export function openRouterHeaders(options: OpenRouterClientOptions): Record<stri
     'Content-Type': 'application/json',
   }
   if (options.appReferrer) headers['HTTP-Referer'] = options.appReferrer
-  if (options.appTitle) headers['X-Title'] = options.appTitle
+  if (options.appTitle) {
+    headers['X-Title'] = options.appTitle
+    headers['X-OpenRouter-Title'] = options.appTitle
+  }
   return headers
 }
 

@@ -4,13 +4,17 @@ import SwiftUI
 struct ConversationLayout<Header: View>: View {
     @Binding var draft: String
     @Binding var selectedModelId: String
+    @Binding var selectedImageModelId: String
     let menuModels: [ChatModel]
+    let imageMenuModels: [ChatModel]
     let messages: [ChatMessage]
     let isStreaming: Bool
     let expandedMode: Bool
     let onSend: () -> Void
     let onStop: () -> Void
     var onToolExpandedChange: ((String, String, Bool) -> Void)?
+    var onApproveCommand: ((String, String) -> Void)?
+    var onRejectCommand: ((String, String) -> Void)?
     var usesHudMaterial: Bool = false
     var usesExternalTitleBar: Bool = false
     var compactResizeConfig: CompactResizeOverlayConfig? = nil
@@ -39,6 +43,8 @@ struct ConversationLayout<Header: View>: View {
                 scrollToBottomSignal: scrollToBottomSignal,
                 onAtBottomChange: { isAtBottom = $0 },
                 onToolExpandedChange: onToolExpandedChange,
+                onApproveCommand: onApproveCommand,
+                onRejectCommand: onRejectCommand,
                 topInset: FloatingChromeMetrics.headerScrollInset(
                     expanded: expandedMode,
                     externalTitleBar: usesExternalTitleBar
@@ -97,7 +103,9 @@ struct ConversationLayout<Header: View>: View {
                     ChatInputBar(
                         draft: $draft,
                         selectedModelId: $selectedModelId,
+                        selectedImageModelId: $selectedImageModelId,
                         menuModels: menuModels,
+                        imageMenuModels: imageMenuModels,
                         fontSettings: fontSettings,
                         isStreaming: isStreaming,
                         onSend: onSend,
@@ -124,26 +132,34 @@ extension ConversationLayout where Header == EmptyView {
     init(
         draft: Binding<String>,
         selectedModelId: Binding<String>,
+        selectedImageModelId: Binding<String>,
         menuModels: [ChatModel],
+        imageMenuModels: [ChatModel],
         messages: [ChatMessage],
         isStreaming: Bool,
         expandedMode: Bool,
         onSend: @escaping () -> Void,
         onStop: @escaping () -> Void,
         onToolExpandedChange: ((String, String, Bool) -> Void)? = nil,
+        onApproveCommand: ((String, String) -> Void)? = nil,
+        onRejectCommand: ((String, String) -> Void)? = nil,
         usesHudMaterial: Bool = false,
         usesExternalTitleBar: Bool = false,
         compactResizeConfig: CompactResizeOverlayConfig? = nil
     ) {
         self._draft = draft
         self._selectedModelId = selectedModelId
+        self._selectedImageModelId = selectedImageModelId
         self.menuModels = menuModels
+        self.imageMenuModels = imageMenuModels
         self.messages = messages
         self.isStreaming = isStreaming
         self.expandedMode = expandedMode
         self.onSend = onSend
         self.onStop = onStop
         self.onToolExpandedChange = onToolExpandedChange
+        self.onApproveCommand = onApproveCommand
+        self.onRejectCommand = onRejectCommand
         self.usesHudMaterial = usesHudMaterial
         self.usesExternalTitleBar = usesExternalTitleBar
         self.compactResizeConfig = compactResizeConfig

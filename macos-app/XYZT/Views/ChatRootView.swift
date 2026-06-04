@@ -79,6 +79,12 @@ struct ChatRootView: View {
         .onChange(of: viewModel.preferences.menuModelIds) { _, _ in
             viewModel.syncSelectedModel()
         }
+        .onChange(of: viewModel.preferences.imageMenuModelIds) { _, _ in
+            viewModel.syncSelectedImageModel()
+        }
+        .onChange(of: viewModel.selectedImageModelId) { _, newValue in
+            viewModel.preferences.selectedImageModelId = newValue
+        }
         .onChange(of: viewModel.preferences.compactWindowAnchor) { _, _ in
             onCompactAnchorChange?()
         }
@@ -165,7 +171,9 @@ struct ChatRootView: View {
                 ConversationLayout(
                     draft: $viewModel.draft,
                     selectedModelId: $viewModel.selectedModelId,
+                    selectedImageModelId: $viewModel.selectedImageModelId,
                     menuModels: viewModel.menuModels,
+                    imageMenuModels: viewModel.imageMenuModels,
                     messages: viewModel.session.messages,
                     isStreaming: viewModel.session.isStreaming,
                     expandedMode: false,
@@ -176,6 +184,20 @@ struct ChatRootView: View {
                             messageId: messageId,
                             toolId: toolId,
                             isExpanded: expanded
+                        )
+                    },
+                    onApproveCommand: { messageId, toolId in
+                        viewModel.respondToToolApproval(
+                            messageId: messageId,
+                            toolId: toolId,
+                            approved: true
+                        )
+                    },
+                    onRejectCommand: { messageId, toolId in
+                        viewModel.respondToToolApproval(
+                            messageId: messageId,
+                            toolId: toolId,
+                            approved: false
                         )
                     },
                     usesHudMaterial: true,

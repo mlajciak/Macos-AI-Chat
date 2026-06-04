@@ -7,6 +7,8 @@ struct MessageListView: View {
     var scrollToBottomSignal: Int = 0
     var onAtBottomChange: ((Bool) -> Void)?
     var onToolExpandedChange: ((String, String, Bool) -> Void)?
+    var onApproveCommand: ((String, String) -> Void)?
+    var onRejectCommand: ((String, String) -> Void)?
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
     /// When set, message column is capped and centered (expanded window).
@@ -21,8 +23,17 @@ struct MessageListView: View {
 
     private var scrollContentToken: String {
         guard let last = messages.last else { return "empty" }
-        let toolChars = last.toolCards.reduce(0) { $0 + $1.body.count }
+        let toolChars = last.toolCards.reduce(0) { $0 + $1.body.count + $1.argsPreview.count }
         return "\(last.id)|\(last.content.count)|\(toolChars)|\(last.toolCards.count)"
+    }
+
+    private var activeStreamingToolId: String? {
+        guard isStreaming,
+              let last = messages.last,
+              last.role == .assistant
+        else { return nil }
+        return last.toolCards.last(where: { $0.status == .running })?.id
+            ?? last.toolCards.last?.id
     }
 
     var body: some View {
@@ -37,8 +48,17 @@ struct MessageListView: View {
                                 isActivelyStreaming: isStreaming
                                     && message.role == .assistant
                                     && message.id == messages.last?.id,
+                                streamingToolId: message.id == messages.last?.id
+                                    ? activeStreamingToolId
+                                    : nil,
                                 onToolExpandedChange: { toolId, expanded in
                                     onToolExpandedChange?(message.id, toolId, expanded)
+                                },
+                                onApproveCommand: { toolId in
+                                    onApproveCommand?(message.id, toolId)
+                                },
+                                onRejectCommand: { toolId in
+                                    onRejectCommand?(message.id, toolId)
                                 }
                             )
                             .id(message.id)

@@ -7,7 +7,10 @@ enum SessionEvent {
     case appendAssistantText(id: String, delta: String)
     case startToolCard(messageId: String, card: AgentToolCard)
     case appendToolBody(messageId: String, toolId: String, delta: String)
+    case appendToolArgs(messageId: String, toolId: String, delta: String)
+    case updateToolCard(messageId: String, toolId: String, card: AgentToolCard)
     case setToolExpanded(messageId: String, toolId: String, isExpanded: Bool)
+    case appendAssistantImages(id: String, paths: [String])
     case beginAssistantReply
     case completeAssistantReply
     case clear
@@ -50,6 +53,21 @@ struct ChatSessionState: Codable {
                   let toolIndex = messages[index].toolCards.firstIndex(where: { $0.id == toolId })
             else { return }
             messages[index].toolCards[toolIndex].body += delta
+        case let .appendToolArgs(messageId, toolId, delta):
+            guard let index = messages.firstIndex(where: { $0.id == messageId }),
+                  let toolIndex = messages[index].toolCards.firstIndex(where: { $0.id == toolId })
+            else { return }
+            messages[index].toolCards[toolIndex].argsPreview += delta
+        case let .updateToolCard(messageId, toolId, card):
+            guard let index = messages.firstIndex(where: { $0.id == messageId }),
+                  let toolIndex = messages[index].toolCards.firstIndex(where: { $0.id == toolId })
+            else { return }
+            messages[index].toolCards[toolIndex] = card
+        case let .appendAssistantImages(id, paths):
+            guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
+            for path in paths where !messages[index].attachmentImagePaths.contains(path) {
+                messages[index].attachmentImagePaths.append(path)
+            }
         case let .setToolExpanded(messageId, toolId, isExpanded):
             guard let index = messages.firstIndex(where: { $0.id == messageId }),
                   let toolIndex = messages[index].toolCards.firstIndex(where: { $0.id == toolId })

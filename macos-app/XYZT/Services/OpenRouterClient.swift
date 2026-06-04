@@ -52,6 +52,16 @@ enum OpenRouterClient {
         var supportedParameters: [String] = []
     }
 
+    struct KeyUsage: Equatable {
+        let label: String
+        let limit: Double?
+        let limitRemaining: Double?
+        let usageAllTime: Double
+        let usageDaily: Double
+        let usageWeekly: Double
+        let usageMonthly: Double
+    }
+
     enum ClientError: LocalizedError {
         case missingApiKey
         case invalidResponse
@@ -108,10 +118,7 @@ enum OpenRouterClient {
 
         var request = URLRequest(url: components.url!)
         request.httpMethod = "GET"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(AppBranding.openRouterReferrer, forHTTPHeaderField: "HTTP-Referer")
-        request.setValue(AppBranding.name, forHTTPHeaderField: "X-Title")
+        applyAuthHeaders(to: &request, apiKey: apiKey)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         try throwIfNeeded(data: data, response: response)
@@ -146,10 +153,7 @@ enum OpenRouterClient {
 
         var request = URLRequest(url: apiBase.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(AppBranding.openRouterReferrer, forHTTPHeaderField: "HTTP-Referer")
-        request.setValue(AppBranding.name, forHTTPHeaderField: "X-Title")
+        applyAuthHeaders(to: &request, apiKey: apiKey)
 
         let wireMessages: [[String: String]] = messages.map {
             ["role": $0.role.rawValue, "content": $0.content]
@@ -178,6 +182,59 @@ enum OpenRouterClient {
             throw ClientError.invalidResponse
         }
         return content
+    }
+
+    static func fetchKeyUsage(apiKey: String) async throws -> KeyUsage {
+        guard !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ClientError.missingApiKey
+        }
+
+        var request = URLRequest(url: apiBase.appendingPathComponent("key"))
+        request.httpMethod = "GET"
+        applyAuthHeaders(to: &request, apiKey: apiKey)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try throwIfNeeded(data: data, response: response)
+
+        struct Payload: Decodable {
+            struct DataPayload: Decodable {
+                let label: String?
+                let limit: Double?
+                let limitRemaining: Double?
+                let usage: Double?
+                let usageDaily: Double?
+                let usageWeekly: Double?
+                let usageMonthly: Double?
+
+                enum CodingKeys: String, CodingKey {
+                    case label, limit
+                    case limitRemaining = "limit_remaining"
+                    case usage
+                    case usageDaily = "usage_daily"
+                    case usageWeekly = "usage_weekly"
+                    case usageMonthly = "usage_monthly"
+                }
+            }
+            let data: DataPayload?
+        }
+
+        let payload = try JSONDecoder().decode(Payload.self, from: data)
+        guard let info = payload.data else { throw ClientError.invalidResponse }
+        return KeyUsage(
+            label: info.label ?? "API key",
+            limit: info.limit,
+            limitRemaining: info.limitRemaining,
+            usageAllTime: info.usage ?? 0,
+            usageDaily: info.usageDaily ?? 0,
+            usageWeekly: info.usageWeekly ?? 0,
+            usageMonthly: info.usageMonthly ?? 0
+        )
+    }
+
+    static func applyAuthHeaders(to request: inout URLRequest, apiKey: String) {
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        AppBranding.applyOpenRouterHeaders(to: &request)
     }
 
     private static func throwIfNeeded(data: Data, response: URLResponse) throws {

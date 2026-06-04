@@ -11,7 +11,10 @@ struct MessageBubbleView: View {
     let message: ChatMessage
     let fontSettings: AppFontSettings
     var isActivelyStreaming = false
+    var streamingToolId: String?
     var onToolExpandedChange: ((String, Bool) -> Void)?
+    var onApproveCommand: ((String) -> Void)?
+    var onRejectCommand: ((String) -> Void)?
 
     private var isUser: Bool { message.role == .user }
 
@@ -26,7 +29,10 @@ struct MessageBubbleView: View {
                 message: message,
                 fontSettings: fontSettings,
                 isActivelyStreaming: isActivelyStreaming,
-                onToolExpandedChange: onToolExpandedChange
+                streamingToolId: streamingToolId,
+                onToolExpandedChange: onToolExpandedChange,
+                onApproveCommand: onApproveCommand,
+                onRejectCommand: onRejectCommand
             )
         }
     }
@@ -36,7 +42,10 @@ private struct AssistantMessageView: View {
     let message: ChatMessage
     let fontSettings: AppFontSettings
     var isActivelyStreaming = false
+    var streamingToolId: String?
     var onToolExpandedChange: ((String, Bool) -> Void)?
+    var onApproveCommand: ((String) -> Void)?
+    var onRejectCommand: ((String) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -44,10 +53,21 @@ private struct AssistantMessageView: View {
                 ToolCardView(
                     card: card,
                     fontSettings: fontSettings,
-                    isStreaming: isActivelyStreaming
+                    isStreaming: isActivelyStreaming && streamingToolId == card.id
                 ) { expanded in
                     onToolExpandedChange?(card.id, expanded)
+                } onApproveCommand: {
+                    onApproveCommand?(card.id)
+                } onRejectCommand: {
+                    onRejectCommand?(card.id)
                 }
+            }
+
+            if !message.attachmentImagePaths.isEmpty {
+                ToolGeneratedImageGallery(
+                    paths: message.attachmentImagePaths,
+                    fontSettings: fontSettings
+                )
             }
 
             if !message.content.isEmpty {

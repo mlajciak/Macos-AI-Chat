@@ -191,6 +191,17 @@ export function engineeringToolDefinitions(): OpenRouterTool[] {
     {
       type: 'function',
       function: {
+        name: 'run_workspace_command',
+        description: 'Run a shell command in the opened project folder. Destructive commands require user approval.',
+        parameters: objectSchema({
+          command: { type: 'string', description: 'Shell command to run in the project directory.' },
+          reason: { type: 'string', description: 'Short explanation of why this command is needed.' },
+        }, ['command', 'reason']),
+      },
+    },
+    {
+      type: 'function',
+      function: {
         name: 'validate_asset',
         description: 'Run deterministic checks on generated or edited engineering assets.',
         parameters: objectSchema({

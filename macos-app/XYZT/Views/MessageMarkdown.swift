@@ -100,6 +100,17 @@ struct MessageMarkdownView: View {
                 }
             }
 
+        case let .image(url, alt):
+            ToolGeneratedImageGallery(
+                paths: [url],
+                fontSettings: fontSettings
+            )
+            if !alt.isEmpty {
+                Text(alt)
+                    .font(fontSettings.font(for: .caption))
+                    .foregroundStyle(theme.secondary)
+            }
+
         case let .codeBlock(_, code):
             Text(code.trimmingCharacters(in: .newlines))
                 .font(MessageMarkdown.codeFont(fontSettings))

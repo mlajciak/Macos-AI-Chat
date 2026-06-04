@@ -4,7 +4,9 @@ import SwiftUI
 struct ChatInputBar: View {
     @Binding var draft: String
     @Binding var selectedModelId: String
+    @Binding var selectedImageModelId: String
     let menuModels: [ChatModel]
+    let imageMenuModels: [ChatModel]
     let fontSettings: AppFontSettings
     let isStreaming: Bool
     let onSend: () -> Void
@@ -88,7 +90,14 @@ struct ChatInputBar: View {
                 models: menuModels,
                 fontSettings: fontSettings,
                 glassMaterial: glassMaterial,
-                isDisabled: false
+                isDisabled: false,
+                menuLabel: "Agent"
+            )
+            ImageModelMenuButton(
+                selectedImageModelId: $selectedImageModelId,
+                models: imageMenuModels,
+                fontSettings: fontSettings,
+                glassMaterial: glassMaterial
             )
             Spacer(minLength: 4)
             if isStreaming {

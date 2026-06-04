@@ -7,6 +7,7 @@ enum MessageMarkdownBlock: Equatable {
     case bulletList([String])
     case orderedList([String])
     case codeBlock(language: String?, code: String)
+    case image(url: String, alt: String)
 }
 
 enum MessageMarkdownParser {
@@ -38,6 +39,12 @@ enum MessageMarkdownParser {
             if let level = headingLevel(trimmed) {
                 let text = String(trimmed.drop(while: { $0 == "#" || $0 == " " }))
                 blocks.append(.heading(level: level, text: text))
+                index = normalized.nextLineStart(after: lineEnd)
+                continue
+            }
+
+            if let image = markdownImage(in: trimmed) {
+                blocks.append(.image(url: image.url, alt: image.alt))
                 index = normalized.nextLineStart(after: lineEnd)
                 continue
             }
@@ -202,6 +209,23 @@ enum MessageMarkdownParser {
         let afterDot = line.index(after: markerEnd)
         guard afterDot < line.endIndex, line[afterDot] == " " else { return nil }
         return digits + 2
+    }
+
+    static func markdownImage(in line: String) -> (alt: String, url: String)? {
+        guard line.hasPrefix("!["),
+              let closeBracket = line.firstIndex(of: "]"),
+              line.index(after: closeBracket) < line.endIndex,
+              line[line.index(after: closeBracket)] == "(",
+              let closeParen = line.lastIndex(of: ")"),
+              closeParen > closeBracket
+        else { return nil }
+        let altStart = line.index(line.startIndex, offsetBy: 2)
+        let alt = String(line[altStart ..< closeBracket])
+        let urlStart = line.index(after: closeBracket)
+        let url = String(line[line.index(after: urlStart) ..< closeParen])
+            .trimmingCharacters(in: .whitespaces)
+        guard !url.isEmpty else { return nil }
+        return (alt, url)
     }
 }
 

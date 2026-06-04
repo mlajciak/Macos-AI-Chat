@@ -7,6 +7,7 @@ export type ToolKind =
   | 'generate_3d_asset'
   | 'render_asset'
   | 'validate_asset'
+  | 'run_workspace_command'
 
 export type AgentToolCard = {
   id: string
@@ -24,6 +25,7 @@ export const toolTitles: Record<ToolKind, string> = {
   generate_3d_asset: 'Generate 3D asset',
   render_asset: 'Render asset',
   validate_asset: 'Validate asset',
+  run_workspace_command: 'Run workspace command',
 }
 
 export function createToolCard(kind: ToolKind, id: string): AgentToolCard {

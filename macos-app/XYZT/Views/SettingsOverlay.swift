@@ -23,25 +23,25 @@ struct SettingsOverlay: View {
 // MARK: - Categories (expanded settings window)
 
 enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
-    case openRouter
-    case chat
-    case appearance
+    case general
+    case models
+    case agent
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .openRouter: "OpenRouter"
-        case .chat: "Chat"
-        case .appearance: "Appearance"
+        case .general: "General"
+        case .models: "Models"
+        case .agent: "Agent"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .openRouter: "key.fill"
-        case .chat: "bubble.left.and.bubble.right"
-        case .appearance: "paintbrush"
+        case .general: "gearshape"
+        case .models: "square.stack.3d.up"
+        case .agent: "terminal"
         }
     }
 }
@@ -49,7 +49,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
 /// Expanded window: sidebar categories + detail pane (macOS Settings style).
 struct ExpandedSettingsSheet: View {
     @Bindable var preferences: AppPreferences
-    @State private var category: SettingsCategory = .openRouter
+    @State private var category: SettingsCategory = .general
 
     private var fontSettings: AppFontSettings { preferences.fontSettings }
 
@@ -97,26 +97,19 @@ struct SettingsCategoryDetail: View {
         ScrollView {
             Group {
                 switch category {
-                case .openRouter:
-                    OpenRouterSettingsSection(
+                case .models:
+                    ModelsSettingsSection(
                         preferences: preferences,
                         fontSettings: fontSettings
                     )
-                case .chat:
-                    VStack(alignment: .leading, spacing: 16) {
-                        CompactWindowSettingsSection(
-                            preferences: preferences,
-                            fontSettings: fontSettings,
-                            usesHudMaterial: usesHudMaterial
-                        )
-                        ChatTitleModelSettingsSection(
-                            preferences: preferences,
-                            fontSettings: fontSettings,
-                            usesHudMaterial: usesHudMaterial
-                        )
-                    }
-                case .appearance:
-                    AppearanceSettingsSection(
+                case .agent:
+                    AgentSettingsSection(
+                        preferences: preferences,
+                        fontSettings: fontSettings,
+                        usesHudMaterial: usesHudMaterial
+                    )
+                case .general:
+                    GeneralSettingsSection(
                         preferences: preferences,
                         fontSettings: fontSettings,
                         usesHudMaterial: usesHudMaterial
@@ -138,7 +131,7 @@ struct SettingsPanelContent: View {
     @Bindable var preferences: AppPreferences
     var usesHudMaterial: Bool = false
 
-    @State private var expandedCategories: Set<SettingsCategory> = [.openRouter]
+    @State private var expandedCategories: Set<SettingsCategory> = []
     @Environment(\.appThemeColors) private var theme
 
     private var fontSettings: AppFontSettings { preferences.fontSettings }
@@ -188,26 +181,19 @@ struct SettingsPanelContent: View {
     @ViewBuilder
     private func categorySectionContent(_ category: SettingsCategory) -> some View {
         switch category {
-        case .openRouter:
-            OpenRouterSettingsSection(
+        case .models:
+            ModelsSettingsSection(
                 preferences: preferences,
                 fontSettings: fontSettings
             )
-        case .chat:
-            VStack(alignment: .leading, spacing: 16) {
-                CompactWindowSettingsSection(
-                    preferences: preferences,
-                    fontSettings: fontSettings,
-                    usesHudMaterial: usesHudMaterial
-                )
-                ChatTitleModelSettingsSection(
-                    preferences: preferences,
-                    fontSettings: fontSettings,
-                    usesHudMaterial: usesHudMaterial
-                )
-            }
-        case .appearance:
-            AppearanceSettingsSection(
+        case .agent:
+            AgentSettingsSection(
+                preferences: preferences,
+                fontSettings: fontSettings,
+                usesHudMaterial: usesHudMaterial
+            )
+        case .general:
+            GeneralSettingsSection(
                 preferences: preferences,
                 fontSettings: fontSettings,
                 usesHudMaterial: usesHudMaterial
@@ -260,6 +246,116 @@ private struct SettingsCollapsibleCategory<Content: View>: View {
     }
 }
 
+// MARK: - Agent
+
+private struct AgentSettingsSection: View {
+    @Bindable var preferences: AppPreferences
+    let fontSettings: AppFontSettings
+    var usesHudMaterial: Bool = false
+    @Environment(\.appThemeColors) private var theme
+
+    private var glassMaterial: NSVisualEffectView.Material {
+        usesHudMaterial ? .hudWindow : .popover
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SettingsFieldRow(label: "Tools", fontSettings: fontSettings) {
+                Toggle("Send tool definitions", isOn: $preferences.enableAgentTools)
+                    .toggleStyle(.switch)
+                    .font(fontSettings.font(for: .caption))
+            }
+
+            SettingsFieldRow(label: "Context", fontSettings: fontSettings) {
+                Toggle("Workspace card", isOn: $preferences.showWorkspaceContextCard)
+                    .toggleStyle(.switch)
+                    .font(fontSettings.font(for: .caption))
+            }
+
+            SettingsFieldRow(label: "Thinking", fontSettings: fontSettings) {
+                Toggle("Collapse when replying", isOn: $preferences.autoCollapseThinking)
+                    .toggleStyle(.switch)
+                    .font(fontSettings.font(for: .caption))
+            }
+
+            SettingsFieldRow(label: "Sandbox", fontSettings: fontSettings) {
+                Toggle("Limit commands to project", isOn: $preferences.sandboxCommands)
+                    .toggleStyle(.switch)
+                    .font(fontSettings.font(for: .caption))
+            }
+
+            SettingsFieldRow(label: "Commands", fontSettings: fontSettings) {
+                AppFontDropdown(fontSettings: fontSettings, glassMaterial: glassMaterial) {
+                    AppDropdownTriggerLabel(
+                        icon: "hand.raised",
+                        title: preferences.commandApprovalMode.label,
+                        fontSettings: fontSettings
+                    )
+                } menuContent: { close in
+                    ForEach(CommandApprovalMode.allCases) { mode in
+                        AppDropdownRow(
+                            icon: "terminal",
+                            title: mode.label,
+                            fontSettings: fontSettings,
+                            isSelected: preferences.commandApprovalMode == mode
+                        ) {
+                            preferences.commandApprovalMode = mode
+                            close()
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+}
+
+// MARK: - General
+
+private struct GeneralSettingsSection: View {
+    @Bindable var preferences: AppPreferences
+    let fontSettings: AppFontSettings
+    var usesHudMaterial: Bool = false
+
+    private var glassMaterial: NSVisualEffectView.Material {
+        usesHudMaterial ? .hudWindow : .popover
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            CompactWindowSettingsSection(
+                preferences: preferences,
+                fontSettings: fontSettings,
+                usesHudMaterial: usesHudMaterial
+            )
+
+            SettingsFieldRow(label: "Theme", fontSettings: fontSettings) {
+                ThemeSettingsPicker(
+                    selection: $preferences.theme,
+                    fontSettings: fontSettings,
+                    glassMaterial: glassMaterial
+                )
+            }
+
+            SettingsFieldRow(label: "Font size", fontSettings: fontSettings) {
+                FontSizeSettingsControl(
+                    pointSize: $preferences.bodyPointSize,
+                    fontSettings: fontSettings
+                )
+            }
+
+            SettingsFieldRow(label: "Font family", fontSettings: fontSettings) {
+                FontFamilySettingsPicker(
+                    mode: $preferences.fontFamilyMode,
+                    customName: $preferences.customFontFamily,
+                    fontSettings: fontSettings,
+                    glassMaterial: glassMaterial
+                )
+            }
+        }
+    }
+}
+
 // MARK: - Compact window
 
 private struct CompactWindowSettingsSection: View {
@@ -271,20 +367,11 @@ private struct CompactWindowSettingsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SettingsFieldRow(label: "Screen position", fontSettings: fontSettings) {
-                Text(
-                    preferences.compactWindowAnchor == .floating
-                        ? "Drag the compact window by its header to place it anywhere on screen."
-                        : "Where the compact chat panel sits on your display."
+                CompactWindowAnchorPicker(
+                    selection: $preferences.compactWindowAnchor,
+                    fontSettings: fontSettings
                 )
-                .font(fontSettings.font(for: .caption))
-                .foregroundStyle(theme.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             }
-
-            CompactWindowAnchorPicker(
-                selection: $preferences.compactWindowAnchor,
-                fontSettings: fontSettings
-            )
         }
     }
 }
@@ -346,67 +433,16 @@ private struct CompactWindowAnchorPicker: View {
     }
 }
 
-// MARK: - Appearance
+// MARK: - Models
 
-private struct AppearanceSettingsSection: View {
-    @Bindable var preferences: AppPreferences
-    let fontSettings: AppFontSettings
-    var usesHudMaterial: Bool = false
-
-    private var glassMaterial: NSVisualEffectView.Material {
-        usesHudMaterial ? .hudWindow : .popover
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SettingsFieldRow(label: "Theme", fontSettings: fontSettings) {
-                ThemeSettingsPicker(
-                    selection: $preferences.theme,
-                    fontSettings: fontSettings,
-                    glassMaterial: glassMaterial
-                )
-            }
-
-            SettingsFieldRow(label: "Font size", fontSettings: fontSettings) {
-                FontSizeSettingsControl(
-                    pointSize: $preferences.bodyPointSize,
-                    fontSettings: fontSettings
-                )
-            }
-
-            SettingsFieldRow(label: "Font family", fontSettings: fontSettings) {
-                FontFamilySettingsPicker(
-                    mode: $preferences.fontFamilyMode,
-                    customName: $preferences.customFontFamily,
-                    fontSettings: fontSettings,
-                    glassMaterial: glassMaterial
-                )
-            }
-        }
-    }
-}
-
-// MARK: - OpenRouter
-
-private enum OpenRouterModelLoadState: Equatable {
-    case idle
-    case loading
-    case loaded
-    case failed(String)
-}
-
-private struct OpenRouterSettingsSection: View {
+private struct ModelsSettingsSection: View {
     @Bindable var preferences: AppPreferences
     let fontSettings: AppFontSettings
     @Environment(\.appThemeColors) private var theme
 
-    @State private var models: [OpenRouterClient.Model] = []
-    @State private var searchQuery = ""
-    @State private var loadState: OpenRouterModelLoadState = .idle
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SettingsFieldRow(label: "OpenRouter API key", fontSettings: fontSettings) {
+        VStack(alignment: .leading, spacing: 16) {
+            SettingsFieldRow(label: "API key", fontSettings: fontSettings) {
                 SecureField("sk-or-…", text: $preferences.openRouterApiKey)
                     .textFieldStyle(.plain)
                     .font(fontSettings.font(for: .caption))
@@ -418,253 +454,29 @@ private struct OpenRouterSettingsSection: View {
                     )
             }
 
-            SettingsFieldRow(label: "Models in menu", fontSettings: fontSettings) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(fontSettings.font(for: .caption))
-                            .foregroundStyle(theme.tertiary)
-
-                        TextField("Search models", text: $searchQuery)
-                            .textFieldStyle(.plain)
-                            .font(fontSettings.font(for: .caption))
-                            .onSubmit { Task { await loadModels() } }
-                    }
-                    .padding(.horizontal, AppDropdownChrome.horizontalPadding)
-                    .pillRow()
-                    .pillBackground(
-                        fill: theme.fieldFill,
-                        stroke: theme.fieldStroke
-                    )
-
-                    HStack {
-                        Text(statusText)
-                            .font(fontSettings.font(for: .caption))
-                            .foregroundStyle(theme.secondary)
-                        Spacer()
-                        Button("Refresh") {
-                            Task { await loadModels() }
-                        }
-                        .buttonStyle(.plain)
-                        .font(fontSettings.font(for: .caption, weight: .medium))
-                        .disabled(!preferences.hasOpenRouterApiKey || loadState == .loading)
-                    }
-
-                    OpenRouterModelListPanel(
-                        models: filteredModels,
-                        loadState: loadState,
-                        fontSettings: fontSettings,
-                        isEnabled: { preferences.isMenuModelEnabled($0) },
-                        onToggle: { model, enabled in
-                            preferences.setMenuModelEnabled(model, enabled: enabled)
-                        }
-                    )
-                }
-            }
-        }
-        .task(id: preferences.openRouterApiKey) {
-            guard preferences.hasOpenRouterApiKey else {
-                models = []
-                loadState = .idle
-                return
-            }
-            await loadModels()
-        }
-    }
-
-    private var filteredModels: [OpenRouterClient.Model] {
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else { return models }
-        return models.filter { model in
-            let haystack = "\(model.id) \(model.name) \(model.description ?? "")".lowercased()
-            return haystack.contains(query)
-        }
-    }
-
-    private var statusText: String {
-        switch loadState {
-        case .idle:
-            preferences.hasOpenRouterApiKey
-                ? "Press Refresh to load models."
-                : "Enter an API key to browse models."
-        case .loading:
-            "Loading models…"
-        case .loaded:
-            "\(filteredModels.count) shown · \(preferences.menuModelIds.count) in menu"
-        case let .failed(message):
-            message
-        }
-    }
-
-    private func loadModels() async {
-        guard preferences.hasOpenRouterApiKey else {
-            models = []
-            loadState = .idle
-            return
-        }
-        loadState = .loading
-        do {
-            models = try await OpenRouterClient.listModels(
-                apiKey: preferences.openRouterApiKey,
-                search: nil
+            OpenRouterUsageChartSection(
+                preferences: preferences,
+                fontSettings: fontSettings
             )
-            loadState = .loaded
-        } catch {
-            models = []
-            loadState = .failed(error.localizedDescription)
+
+            ChatTitleModelSettingsSection(
+                preferences: preferences,
+                fontSettings: fontSettings,
+                usesHudMaterial: false
+            )
+
+            OpenRouterModelPickerSection(
+                kind: .agent,
+                preferences: preferences,
+                fontSettings: fontSettings
+            )
+
+            OpenRouterModelPickerSection(
+                kind: .image,
+                preferences: preferences,
+                fontSettings: fontSettings
+            )
         }
-    }
-}
-
-private enum OpenRouterModelListChrome {
-    static let maxHeight: CGFloat = 220
-    static let placeholderHeight: CGFloat = 120
-    static let cornerRadius: CGFloat = 10
-}
-
-private struct OpenRouterModelListPanel: View {
-    let models: [OpenRouterClient.Model]
-    let loadState: OpenRouterModelLoadState
-    let fontSettings: AppFontSettings
-    let isEnabled: (String) -> Bool
-    let onToggle: (OpenRouterClient.Model, Bool) -> Void
-    @Environment(\.appThemeColors) private var theme
-
-    var body: some View {
-        Group {
-            switch loadState {
-            case .loaded where !models.isEmpty:
-                scrollableModelList
-            default:
-                placeholderBox
-            }
-        }
-    }
-
-    private var scrollableModelList: some View {
-        modelListChrome(fixedHeight: OpenRouterModelListChrome.maxHeight) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(models, id: \.id) { model in
-                        OpenRouterModelRow(
-                            model: model,
-                            isEnabled: isEnabled(model.id),
-                            fontSettings: fontSettings
-                        ) { enabled in
-                            onToggle(model, enabled)
-                        }
-                    }
-                }
-                .appScrollStyle()
-            }
-            .scrollbarsWhenNeeded()
-        }
-    }
-
-    private var placeholderBox: some View {
-        modelListChrome(fixedHeight: OpenRouterModelListChrome.placeholderHeight) {
-            placeholderContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    private func modelListChrome<Content: View>(
-        fixedHeight: CGFloat,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: OpenRouterModelListChrome.cornerRadius, style: .continuous)
-                .fill(theme.fieldFill)
-            RoundedRectangle(cornerRadius: OpenRouterModelListChrome.cornerRadius, style: .continuous)
-                .strokeBorder(theme.fieldStroke, lineWidth: 0.5)
-
-            content()
-                .padding(6)
-        }
-        .frame(height: fixedHeight)
-    }
-
-    @ViewBuilder
-    private var placeholderContent: some View {
-        switch loadState {
-        case .loading:
-            ProgressView()
-                .controlSize(.small)
-        case .loaded:
-            Text("No models match your search.")
-                .font(fontSettings.font(for: .caption))
-                .foregroundStyle(theme.tertiary)
-        case .idle, .failed:
-            Text(idleOrErrorMessage)
-                .font(fontSettings.font(for: .caption))
-                .foregroundStyle(theme.tertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
-        default:
-            EmptyView()
-        }
-    }
-
-    private var idleOrErrorMessage: String {
-        if case let .failed(message) = loadState { return message }
-        return "Load models with Refresh above."
-    }
-}
-
-private struct OpenRouterModelRow: View {
-    private static let rowHeight: CGFloat = 36
-
-    let model: OpenRouterClient.Model
-    let isEnabled: Bool
-    let fontSettings: AppFontSettings
-    let onToggle: (Bool) -> Void
-
-    @Environment(\.appThemeColors) private var theme
-    @State private var isHovered = false
-
-    var body: some View {
-        Button {
-            onToggle(!isEnabled)
-        } label: {
-            HStack(alignment: .center, spacing: 8) {
-                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                    .foregroundStyle(isEnabled ? theme.accent : theme.secondaryMuted)
-                    .frame(width: 16, alignment: .center)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(model.name)
-                        .font(fontSettings.font(for: .caption, weight: .medium))
-                        .foregroundStyle(theme.primaryText)
-                        .lineLimit(1)
-                    Text(model.id)
-                        .font(fontSettings.font(size: max(fontSettings.captionPointSize - 1, 9)))
-                        .foregroundStyle(theme.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, minHeight: Self.rowHeight, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(rowFill)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-    }
-
-    private var rowFill: Color {
-        if isEnabled {
-            return theme.accentMuted
-        }
-        if isHovered {
-            return theme.mutedRowFill
-        }
-        return .clear
     }
 }
 
@@ -682,13 +494,6 @@ private struct ChatTitleModelSettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SettingsFieldRow(label: "Chat title generation", fontSettings: fontSettings) {
-                Text("After your first message, the app can ask OpenRouter for a short session title.")
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(theme.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
             SettingsFieldRow(label: "Title model", fontSettings: fontSettings) {
                 AppFontDropdown(fontSettings: fontSettings, glassMaterial: glassMaterial) {
                     AppDropdownTriggerLabel(
@@ -723,32 +528,7 @@ private struct ChatTitleModelSettingsSection: View {
                             stroke: theme.fieldStroke
                         )
                 }
-            } else {
-                Text("Uses the model selected in the chat input. If none is selected, the first message is truncated for the title.")
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(theme.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-        }
-    }
-}
-
-// MARK: - Layout
-
-private struct SettingsFieldRow<Content: View>: View {
-    let label: String
-    let fontSettings: AppFontSettings
-    @ViewBuilder var content: () -> Content
-    @Environment(\.appThemeColors) private var theme
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(fontSettings.font(for: .caption, weight: .medium))
-                .foregroundStyle(theme.secondary)
-
-            content()
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

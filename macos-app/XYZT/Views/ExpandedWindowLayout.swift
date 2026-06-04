@@ -15,7 +15,9 @@ struct ExpandedWindowLayout: View {
                 ConversationLayout(
                     draft: $viewModel.draft,
                     selectedModelId: $viewModel.selectedModelId,
+                    selectedImageModelId: $viewModel.selectedImageModelId,
                     menuModels: viewModel.menuModels,
+                    imageMenuModels: viewModel.imageMenuModels,
                     messages: viewModel.session.messages,
                     isStreaming: viewModel.session.isStreaming,
                     expandedMode: true,
@@ -26,6 +28,20 @@ struct ExpandedWindowLayout: View {
                             messageId: messageId,
                             toolId: toolId,
                             isExpanded: expanded
+                        )
+                    },
+                    onApproveCommand: { messageId, toolId in
+                        viewModel.respondToToolApproval(
+                            messageId: messageId,
+                            toolId: toolId,
+                            approved: true
+                        )
+                    },
+                    onRejectCommand: { messageId, toolId in
+                        viewModel.respondToToolApproval(
+                            messageId: messageId,
+                            toolId: toolId,
+                            approved: false
                         )
                     },
                     usesHudMaterial: true

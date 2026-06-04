@@ -70,6 +70,12 @@
 		B1000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1000020 /* Assets.xcassets */; };
 		B1000030 /* OpenRouterClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000030 /* OpenRouterClientTests.swift */; };
 		B1000069 /* MessageMarkdownParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000069 /* MessageMarkdownParserTests.swift */; };
+		B1000076 /* EngineeringTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000076 /* EngineeringTools.swift */; };
+		B1000077 /* WorkspaceSandbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000077 /* WorkspaceSandbox.swift */; };
+		B1000078 /* ToolCallStreamAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000078 /* ToolCallStreamAccumulator.swift */; };
+		B1000079 /* ChatViewModel+AgentTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000079 /* ChatViewModel+AgentTools.swift */; };
+		B1000080 /* OpenRouterSettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000080 /* OpenRouterSettingsComponents.swift */; };
+		B1000081 /* ImageModelMenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000081 /* ImageModelMenuButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -148,6 +154,12 @@
 		F1000069 /* MessageMarkdownParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownParserTests.swift; sourceTree = "<group>"; };
 		F1000070 /* CompactWindowAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactWindowAnchor.swift; sourceTree = "<group>"; };
 		F1000075 /* CompactWindowHeaderDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactWindowHeaderDrag.swift; sourceTree = "<group>"; };
+		F1000076 /* EngineeringTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineeringTools.swift; sourceTree = "<group>"; };
+		F1000077 /* WorkspaceSandbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSandbox.swift; sourceTree = "<group>"; };
+		F1000078 /* ToolCallStreamAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCallStreamAccumulator.swift; sourceTree = "<group>"; };
+		F1000079 /* ChatViewModel+AgentTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatViewModel+AgentTools.swift"; sourceTree = "<group>"; };
+		F1000080 /* OpenRouterSettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterSettingsComponents.swift; sourceTree = "<group>"; };
+		F1000081 /* ImageModelMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageModelMenuButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -236,6 +248,9 @@
 				F1000057 /* OpenRouterStreaming.swift */,
 				F1000050 /* OpenRouterClient.swift */,
 				F1000051 /* OpenRouterCredentialStore.swift */,
+				F1000076 /* EngineeringTools.swift */,
+				F1000077 /* WorkspaceSandbox.swift */,
+				F1000078 /* ToolCallStreamAccumulator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -246,6 +261,7 @@
 				F1000008 /* ChatViewModel.swift */,
 				F1000036 /* ChatViewModel+SessionBrowser.swift */,
 				F1000062 /* ChatViewModel+Workspace.swift */,
+				F1000079 /* ChatViewModel+AgentTools.swift */,
 				F1000041 /* ChatViewModel+Overlays.swift */,
 			);
 			path = ViewModels;
@@ -284,6 +300,8 @@
 				F1000060 /* JumpToBottomButton.swift */,
 				F1000064 /* ExpandedWindowLayout.swift */,
 				F1000067 /* MessageMarkdownParser.swift */,
+				F1000080 /* OpenRouterSettingsComponents.swift */,
+				F1000081 /* ImageModelMenuButton.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -481,6 +499,12 @@
 				B1000060 /* JumpToBottomButton.swift in Sources */,
 				B1000061 /* ProjectSessionStore.swift in Sources */,
 				B1000062 /* ChatViewModel+Workspace.swift in Sources */,
+				B1000079 /* ChatViewModel+AgentTools.swift in Sources */,
+				B1000080 /* OpenRouterSettingsComponents.swift in Sources */,
+				B1000081 /* ImageModelMenuButton.swift in Sources */,
+				B1000076 /* EngineeringTools.swift in Sources */,
+				B1000077 /* WorkspaceSandbox.swift in Sources */,
+				B1000078 /* ToolCallStreamAccumulator.swift in Sources */,
 				B1000063 /* OpenFolderGateView.swift in Sources */,
 				B1000064 /* ExpandedWindowLayout.swift in Sources */,
 				B1000070 /* CompactWindowAnchor.swift in Sources */,

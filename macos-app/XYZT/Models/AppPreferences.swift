@@ -32,6 +32,22 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
+enum CommandApprovalMode: String, CaseIterable, Identifiable, Codable {
+    case alwaysAsk
+    case askDestructive
+    case autoApprove
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .alwaysAsk: "Ask before every command"
+        case .askDestructive: "Auto-approve read-only commands"
+        case .autoApprove: "Auto-run (still workspace-scoped)"
+        }
+    }
+}
+
 enum ChatTitleModelSource: String, CaseIterable, Identifiable, Codable {
     case selectedChatModel
     case custom
@@ -40,7 +56,7 @@ enum ChatTitleModelSource: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .selectedChatModel: "Use selected chat model"
+        case .selectedChatModel: "Use selected Agent model"
         case .custom: "Custom model"
         }
     }
@@ -100,16 +116,31 @@ final class AppPreferences {
         static let fontFamilyMode = "xyzt.fontFamilyMode"
         static let customFontFamily = "xyzt.customFontFamily"
         static let menuModelIds = "xyzt.menuModelIds"
+        static let imageMenuModelIds = "xyzt.imageMenuModelIds"
+        static let selectedImageModelId = "xyzt.selectedImageModelId"
         static let modelLabels = "xyzt.modelLabels"
         static let chatTitleModelSource = "xyzt.chatTitleModelSource"
         static let chatTitleCustomModelId = "xyzt.chatTitleCustomModelId"
         static let compactWindowAnchor = "xyzt.compactWindowAnchor"
         static let compactFloatingOriginX = "xyzt.compactFloatingOriginX"
         static let compactFloatingOriginY = "xyzt.compactFloatingOriginY"
+        static let commandApprovalMode = "xyzt.commandApprovalMode"
+        static let sandboxCommands = "xyzt.sandboxCommands"
+        static let showWorkspaceContextCard = "xyzt.showWorkspaceContextCard"
+        static let autoCollapseThinking = "xyzt.autoCollapseThinking"
+        static let enableAgentTools = "xyzt.enableAgentTools"
     }
 
     var menuModelIds: [String] {
         didSet { UserDefaults.standard.set(menuModelIds, forKey: Keys.menuModelIds) }
+    }
+
+    var imageMenuModelIds: [String] {
+        didSet { UserDefaults.standard.set(imageMenuModelIds, forKey: Keys.imageMenuModelIds) }
+    }
+
+    var selectedImageModelId: String {
+        didSet { UserDefaults.standard.set(selectedImageModelId, forKey: Keys.selectedImageModelId) }
     }
 
     private(set) var modelLabels: [String: String] {
@@ -124,8 +155,15 @@ final class AppPreferences {
         !openRouterApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    var menuModels: [ChatModel] {
+    var agentMenuModels: [ChatModel] {
         ChatModelCatalog.menuModels(menuModelIds: menuModelIds, labels: modelLabels)
+    }
+
+    /// Agent (text) models enabled for the chat menu.
+    var menuModels: [ChatModel] { agentMenuModels }
+
+    var imageMenuModels: [ChatModel] {
+        ChatModelCatalog.menuModels(menuModelIds: imageMenuModelIds, labels: modelLabels)
     }
 
     func setMenuModelEnabled(_ model: OpenRouterClient.Model, enabled: Bool) {
@@ -144,6 +182,27 @@ final class AppPreferences {
 
     func isMenuModelEnabled(_ modelId: String) -> Bool {
         menuModelIds.contains(modelId)
+    }
+
+    func setImageMenuModelEnabled(_ model: OpenRouterClient.Model, enabled: Bool) {
+        var labels = modelLabels
+        labels[model.id] = model.name
+        modelLabels = labels
+
+        var ids = imageMenuModelIds
+        if enabled {
+            if !ids.contains(model.id) { ids.append(model.id) }
+        } else {
+            ids.removeAll { $0 == model.id }
+            if selectedImageModelId == model.id {
+                selectedImageModelId = ids.first ?? ""
+            }
+        }
+        imageMenuModelIds = ids
+    }
+
+    func isImageMenuModelEnabled(_ modelId: String) -> Bool {
+        imageMenuModelIds.contains(modelId)
     }
 
     var theme: AppTheme {
@@ -181,6 +240,26 @@ final class AppPreferences {
         didSet { UserDefaults.standard.set(compactWindowAnchor.rawValue, forKey: Keys.compactWindowAnchor) }
     }
 
+    var commandApprovalMode: CommandApprovalMode {
+        didSet { UserDefaults.standard.set(commandApprovalMode.rawValue, forKey: Keys.commandApprovalMode) }
+    }
+
+    var sandboxCommands: Bool {
+        didSet { UserDefaults.standard.set(sandboxCommands, forKey: Keys.sandboxCommands) }
+    }
+
+    var showWorkspaceContextCard: Bool {
+        didSet { UserDefaults.standard.set(showWorkspaceContextCard, forKey: Keys.showWorkspaceContextCard) }
+    }
+
+    var autoCollapseThinking: Bool {
+        didSet { UserDefaults.standard.set(autoCollapseThinking, forKey: Keys.autoCollapseThinking) }
+    }
+
+    var enableAgentTools: Bool {
+        didSet { UserDefaults.standard.set(enableAgentTools, forKey: Keys.enableAgentTools) }
+    }
+
     /// Bottom-left origin of the compact panel when `compactWindowAnchor` is `.floating`.
     var compactFloatingWindowOrigin: CGPoint? {
         didSet {
@@ -206,6 +285,8 @@ final class AppPreferences {
     init() {
         let defaults = UserDefaults.standard
         menuModelIds = defaults.stringArray(forKey: Keys.menuModelIds) ?? []
+        imageMenuModelIds = defaults.stringArray(forKey: Keys.imageMenuModelIds) ?? []
+        selectedImageModelId = defaults.string(forKey: Keys.selectedImageModelId) ?? ""
         modelLabels = Self.loadModelLabels()
         openRouterApiKey = OpenRouterCredentialStore.read() ?? ""
         if let raw = defaults.string(forKey: Keys.theme),
@@ -261,6 +342,32 @@ final class AppPreferences {
             compactFloatingWindowOrigin = nil
         }
 
+        if let raw = defaults.string(forKey: Keys.commandApprovalMode),
+           let mode = CommandApprovalMode(rawValue: raw) {
+            commandApprovalMode = mode
+        } else {
+            commandApprovalMode = .askDestructive
+        }
+        if defaults.object(forKey: Keys.sandboxCommands) != nil {
+            sandboxCommands = defaults.bool(forKey: Keys.sandboxCommands)
+        } else {
+            sandboxCommands = true
+        }
+        if defaults.object(forKey: Keys.showWorkspaceContextCard) != nil {
+            showWorkspaceContextCard = defaults.bool(forKey: Keys.showWorkspaceContextCard)
+        } else {
+            showWorkspaceContextCard = true
+        }
+        if defaults.object(forKey: Keys.autoCollapseThinking) != nil {
+            autoCollapseThinking = defaults.bool(forKey: Keys.autoCollapseThinking)
+        } else {
+            autoCollapseThinking = true
+        }
+        if defaults.object(forKey: Keys.enableAgentTools) != nil {
+            enableAgentTools = defaults.bool(forKey: Keys.enableAgentTools)
+        } else {
+            enableAgentTools = true
+        }
     }
 
     private static func clampPointSize(_ value: Double) -> Double {

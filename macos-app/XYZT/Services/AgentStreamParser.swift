@@ -21,14 +21,20 @@ final class AgentStreamParser {
     private var mode: Mode = .seek
     private var carry = ""
     private var thinkingCard: AgentToolCard?
+    private var thinkingSource: ThinkingSource?
     private var nextToolId = 0
+
+    private enum ThinkingSource {
+        case tag
+        case reasoning
+    }
 
     /// Reasoning tokens from OpenRouter (`delta.reasoning` / `reasoning_details`).
     func pushReasoning(_ delta: String) -> [StreamParserEvent] {
         guard !delta.isEmpty else { return [] }
         var events: [StreamParserEvent] = []
         if mode != .think {
-            beginThinking(&events)
+            beginThinking(&events, source: .reasoning)
         }
         events.append(contentsOf: thinkingDelta(delta))
         return events
@@ -37,7 +43,7 @@ final class AgentStreamParser {
     func push(_ delta: String) -> [StreamParserEvent] {
         guard !delta.isEmpty else { return [] }
         var events: [StreamParserEvent] = []
-        if mode == .think {
+        if mode == .think, thinkingSource == .reasoning {
             events.append(contentsOf: endThinking())
         }
         var rest = carry + delta
@@ -60,7 +66,7 @@ final class AgentStreamParser {
                 if !prefix.isEmpty { events.append(.textDelta(prefix)) }
                 let afterOpen = rest.index(openIdx, offsetBy: Self.thinkOpen.count, limitedBy: rest.endIndex) ?? rest.endIndex
                 rest = String(rest[afterOpen...])
-                beginThinking(&events)
+                beginThinking(&events, source: .tag)
             case .think:
                 guard let closeIdx = rest.range(of: Self.thinkClose)?.lowerBound else {
                     let partial = Self.stripPartialSuffix(rest, tag: Self.thinkClose)
@@ -102,8 +108,9 @@ final class AgentStreamParser {
         return events
     }
 
-    private func beginThinking(_ events: inout [StreamParserEvent]) {
+    private func beginThinking(_ events: inout [StreamParserEvent], source: ThinkingSource) {
         mode = .think
+        thinkingSource = source
         nextToolId += 1
         let card = AgentToolCard.thinking(id: "thinking-\(nextToolId)")
         thinkingCard = card
@@ -119,10 +126,12 @@ final class AgentStreamParser {
 
     private func endThinking() -> [StreamParserEvent] {
         guard let card = thinkingCard else {
+            thinkingSource = nil
             mode = .text
             return []
         }
         thinkingCard = nil
+        thinkingSource = nil
         mode = .text
         return [.thinkingEnd(cardId: card.id)]
     }
