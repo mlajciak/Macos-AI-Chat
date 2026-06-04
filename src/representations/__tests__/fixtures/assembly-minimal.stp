@@ -1,0 +1,16 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('assembly fixture'),'2;1');
+FILE_NAME('assembly','2024-01-01T00:00:00',('test'),(''),'fixture','fixture','');
+FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));
+ENDSEC;
+DATA;
+#10 = PRODUCT('TopAssembly','Top assembly','',(#11));
+#20 = PRODUCT('SubPart','Sub part','',(#21));
+#30 = PRODUCT_DEFINITION('','',#31,#34);
+#31 = PRODUCT_DEFINITION_FORMATION('','',#10);
+#32 = PRODUCT_DEFINITION('','',#33,#34);
+#33 = PRODUCT_DEFINITION_FORMATION('','',#20);
+#40 = NEXT_ASSEMBLY_USAGE_OCCURRENCE('sub1','',#30,#32,$);
+ENDSEC;
+END-ISO-10303-21;

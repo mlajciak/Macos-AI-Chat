@@ -1,0 +1,9 @@
+(export (version D)
+  (components
+    (comp (ref R1) (value 10k) (footprint R_0402))
+    (comp (ref C1) (value 100n) (footprint C_0402))
+  )
+  (nets
+    (net (name GND) (node (ref R1) (pin 2)) (node (ref C1) (pin 1)))
+  )
+)

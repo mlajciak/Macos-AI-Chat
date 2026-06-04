@@ -1,0 +1,222 @@
+import AppKit
+import SwiftUI
+
+@Observable
+@MainActor
+final class ChatWindowController: NSObject {
+    static let compactDefaultSize = NSSize(width: 360, height: 520)
+    static let compactMinSize = NSSize(width: 300, height: 380)
+    static let compactMaxSize = NSSize(width: 560, height: 820)
+    static let expandedDefaultSize = NSSize(width: 720, height: 840)
+    static let expandedMinSize = NSSize(width: 480, height: 640)
+    static let screenInset: CGFloat = 24
+
+    private(set) var mode: WindowMode = .compact
+    private var window: NSWindow?
+    private var hostingView: NSHostingView<ChatRootView>?
+    private var savedExpandedFrame: NSRect?
+    private var isApplyingChrome = false
+    private var isUserResizingCompact = false
+
+    let viewModel = ChatViewModel()
+
+    func show() {
+        if let window {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let win = KeyableWindow(
+            contentRect: NSRect(origin: .zero, size: Self.compactDefaultSize),
+            styleMask: [.borderless, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        win.isReleasedWhenClosed = false
+        win.delegate = self
+        win.title = AppBranding.name
+        win.minSize = Self.compactMinSize
+        win.maxSize = Self.compactMaxSize
+
+        window = win
+        installContent()
+        applyCompactChrome()
+        snapCompactToBottomRight()
+        NSApp.setActivationPolicy(.accessory)
+        win.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func toggleMode() {
+        setMode(mode == .compact ? .expanded : .compact)
+    }
+
+    func setMode(_ newMode: WindowMode) {
+        guard let window, newMode != mode else { return }
+
+        if newMode == .expanded {
+            mode = .expanded
+            applyExpandedChrome()
+            if let saved = savedExpandedFrame {
+                window.setFrame(saved, display: true, animate: true)
+            } else {
+                centerExpanded(window)
+            }
+            NSApp.setActivationPolicy(.regular)
+        } else {
+            savedExpandedFrame = window.frame
+            mode = .compact
+            applyCompactChrome()
+            snapCompactToBottomRight(animate: true)
+            NSApp.setActivationPolicy(.accessory)
+        }
+
+        refreshContent()
+    }
+
+    func hideWindow() {
+        window?.orderOut(nil)
+    }
+
+    private func installContent() {
+        guard let window else { return }
+        let root = makeRootView()
+        if let hostingView {
+            hostingView.rootView = root
+        } else {
+            let host = NSHostingView(rootView: root)
+            host.translatesAutoresizingMaskIntoConstraints = false
+            window.contentView = host
+            hostingView = host
+        }
+    }
+
+    private func refreshContent() {
+        installContent()
+    }
+
+    private func makeRootView() -> ChatRootView {
+        ChatRootView(
+            viewModel: viewModel,
+            mode: mode,
+            onExpand: { [weak self] in self?.setMode(.expanded) },
+            onCompact: { [weak self] in self?.setMode(.compact) },
+            onClose: { [weak self] in self?.hideWindow() },
+            onCompactResizeStarted: { [weak self] in self?.isUserResizingCompact = true },
+            onCompactResizeEnded: { [weak self] in
+                self?.isUserResizingCompact = false
+                self?.snapCompactToBottomRight()
+            }
+        )
+    }
+
+    private func applyCompactChrome() {
+        guard let window else { return }
+        isApplyingChrome = true
+        defer { isApplyingChrome = false }
+
+        window.styleMask = [.borderless, .resizable, .fullSizeContentView]
+        window.title = AppBranding.name
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.level = .floating
+        window.isMovable = false
+        window.isMovableByWindowBackground = false
+        window.minSize = Self.compactMinSize
+        window.maxSize = Self.compactMaxSize
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        var frame = window.frame
+        frame.size = Self.compactDefaultSize
+        window.setFrame(frame, display: false)
+        snapCompactToBottomRight()
+    }
+
+    private func applyExpandedChrome() {
+        guard let window else { return }
+        isApplyingChrome = true
+        defer { isApplyingChrome = false }
+
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.title = AppBranding.name
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = false
+        window.toolbar = nil
+        window.toolbarStyle = .automatic
+        window.standardWindowButton(.closeButton)?.isHidden = false
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = false
+        window.standardWindowButton(.zoomButton)?.isHidden = false
+        window.level = .normal
+        window.isMovable = true
+        window.isMovableByWindowBackground = false
+        window.minSize = Self.expandedMinSize
+        window.maxSize = NSSize(width: 10_000, height: 10_000)
+        window.isOpaque = true
+        window.backgroundColor = NSColor.windowBackgroundColor
+        window.hasShadow = true
+        window.collectionBehavior = [.fullScreenPrimary]
+
+        let size = window.frame.size
+        if size.width < Self.expandedMinSize.width || size.height < Self.expandedMinSize.height {
+            window.setContentSize(
+                NSSize(
+                    width: max(Self.expandedMinSize.width, size.width),
+                    height: max(Self.expandedMinSize.height, size.height)
+                )
+            )
+        }
+    }
+
+    /// Keeps the window's bottom-right corner pinned to the screen's bottom-right inset.
+    func snapCompactToBottomRight(animate: Bool = false) {
+        guard mode == .compact, let window else { return }
+        guard let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
+
+        let visible = screen.visibleFrame
+        var frame = window.frame
+        frame.origin.x = visible.maxX - frame.width - Self.screenInset
+        frame.origin.y = visible.minY + Self.screenInset
+        window.setFrame(frame, display: true, animate: animate)
+    }
+
+    private func centerExpanded(_ window: NSWindow) {
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        var frame = NSRect(origin: .zero, size: Self.expandedDefaultSize)
+        frame.origin.x = visible.midX - frame.width / 2
+        frame.origin.y = visible.midY - frame.height / 2
+        window.setFrame(frame, display: true, animate: true)
+    }
+}
+
+extension ChatWindowController: NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if mode == .compact {
+            hideWindow()
+            return false
+        }
+        return true
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard !isApplyingChrome, !isUserResizingCompact, mode == .compact else { return }
+        snapCompactToBottomRight()
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        guard !isApplyingChrome, mode == .compact else { return }
+        snapCompactToBottomRight()
+    }
+
+    func windowDidChangeScreen(_ notification: Notification) {
+        guard mode == .compact else { return }
+        snapCompactToBottomRight()
+    }
+}

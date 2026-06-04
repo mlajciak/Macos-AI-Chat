@@ -1,0 +1,13 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('FreeCAD Model'),'2;1');
+FILE_NAME('Open CASCADE Shape Model','2023-03-23T20:51:58',('Author'),(
+    ''),'Open CASCADE STEP processor 7.6','FreeCAD','Unknown');
+FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));
+ENDSEC;
+DATA;
+#7 = PRODUCT('Cube','Cube','',(#8));
+#15 = MANIFOLD_SOLID_BREP('',#16);
+#16 = CLOSED_SHELL('',(#17));
+ENDSEC;
+END-ISO-10303-21;
