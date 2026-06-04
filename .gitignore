@@ -4,3 +4,9 @@ dist/
 *.xcuserstate
 xcuserdata/
 DerivedData/
+
+# Local XYZT project metadata (created when opening a folder in the app)
+.xyzt/
+
+# Xcode build output when building from macos-app/
+macos-app/build/
