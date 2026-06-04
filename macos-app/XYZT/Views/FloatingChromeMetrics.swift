@@ -11,7 +11,7 @@ enum FloatingChromeMetrics {
     static let expandedContentMaxWidth: CGFloat = 720
 
     static let headerHorizontalPadding: CGFloat = 12
-    static let headerTopPadding: CGFloat = 10
+    static var headerTopPadding: CGFloat { headerHorizontalPadding }
     static let headerBottomPadding: CGFloat = 6
     static let headerBarHeight: CGFloat = 36
     /// Minimal pill shown when the compact panel collapses to one row.
@@ -45,12 +45,17 @@ enum FloatingChromeMetrics {
         inputBarHeight + inputBarPadding + inputBottomPadding + chromeContentGap
     }
 
+    /// Header chrome band (padding + bar); excludes the fade gap below.
+    static func headerChromeHeight(expanded: Bool) -> CGFloat {
+        if expanded {
+            return expandedTrafficLightInset + headerBarHeight + headerBottomPadding
+        }
+        return headerTopPadding + headerBarHeight + headerBottomPadding
+    }
+
     /// Height of the floating header overlay (compact or expanded in-window chrome).
     static func headerOverlayHeight(expanded: Bool) -> CGFloat {
-        if expanded {
-            return expandedTrafficLightInset + headerBarHeight + headerBottomPadding + chromeContentGap
-        }
-        return headerTopPadding + headerBarHeight + headerBottomPadding + chromeContentGap
+        headerChromeHeight(expanded: expanded) + chromeContentGap
     }
 
     static func headerScrollInset(expanded: Bool, externalTitleBar: Bool = false) -> CGFloat {
@@ -58,12 +63,6 @@ enum FloatingChromeMetrics {
             return headerBottomPadding + chromeContentGap
         }
         return headerOverlayHeight(expanded: expanded)
-    }
-
-    /// Insets only the vertical scroller; scroll content still uses full `headerScrollInset` / `inputOverlayHeight`.
-    static func conversationScrollerInsets(expanded: Bool, externalTitleBar: Bool) -> NSEdgeInsets {
-        let top = externalTitleBar ? 0 : headerOverlayHeight(expanded: expanded)
-        return NSEdgeInsets(top: top, left: 0, bottom: inputOverlayHeight, right: 0)
     }
 
     static let inputHorizontalPadding: CGFloat = 12

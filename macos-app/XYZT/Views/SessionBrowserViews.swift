@@ -233,8 +233,6 @@ struct ProjectFolderSection: View {
 
 struct SessionTreeRow: View {
     private static let rowHeight: CGFloat = 32
-    private static let trailingOverlayWidth: CGFloat = 88
-    private static let titleTrailingFadeWidth: CGFloat = 18
 
     let thread: ChatThread
     let isActive: Bool
@@ -249,74 +247,40 @@ struct SessionTreeRow: View {
         HStack(alignment: .center, spacing: 8) {
             SessionStatusIndicator(isRunning: thread.isRunning)
 
-            ZStack(alignment: .trailing) {
-                Text(thread.title)
-                    .font(fontSettings.font(for: .caption, weight: isActive ? .semibold : .regular))
-                    .foregroundStyle(theme.primaryText)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .mask(titleFadeMask)
+            Text(thread.title)
+                .font(fontSettings.font(for: .caption, weight: isActive ? .semibold : .regular))
+                .foregroundStyle(theme.primaryText)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
 
-                trailingActionsOverlay
+            if isHovered {
+                Text(SessionRelativeTime.label(since: thread.lastActiveAt))
+                    .font(fontSettings.font(for: .caption))
+                    .foregroundStyle(theme.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(2)
+
+                Button(role: .destructive, action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .medium))
+                        .frame(width: 16, height: 16)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red.opacity(0.85))
+                .macTooltip("Delete session")
+                .layoutPriority(2)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 10)
         .pillRow(height: Self.rowHeight)
         .pillBackground(fill: rowBackground)
-        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .contentShape(Capsule(style: .continuous))
         .onTapGesture(perform: onSelect)
         .onHover { isHovered = $0 }
         .animation(.easeOut(duration: 0.15), value: isHovered)
-    }
-
-    private var titleFadeMask: some View {
-        let fadeWidth = isHovered
-            ? Self.trailingOverlayWidth + Self.titleTrailingFadeWidth
-            : Self.titleTrailingFadeWidth
-
-        return HStack(spacing: 0) {
-            Rectangle().fill(Color.black)
-            LinearGradient(
-                colors: [.black, .clear],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: fadeWidth)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var trailingActionsOverlay: some View {
-        HStack(spacing: 6) {
-            Text(SessionRelativeTime.label(since: thread.lastActiveAt))
-                .font(fontSettings.font(for: .caption))
-                .foregroundStyle(theme.secondary)
-                .lineLimit(1)
-
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
-                    .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .medium))
-                    .frame(width: 16, height: 16)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.red.opacity(0.85))
-            .macTooltip("Delete session")
-        }
-        .padding(.leading, 10)
-        .padding(.trailing, 2)
-        .frame(width: Self.trailingOverlayWidth, alignment: .trailing)
-        .frame(maxHeight: .infinity)
-        .background(alignment: .trailing) {
-            LinearGradient(
-                colors: [.clear, rowBackground],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: Self.trailingOverlayWidth + 20)
-        }
-        .opacity(isHovered ? 1 : 0)
-        .allowsHitTesting(isHovered)
     }
 
     private var rowBackground: Color {

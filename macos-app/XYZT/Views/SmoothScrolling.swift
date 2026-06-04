@@ -6,17 +6,24 @@ enum AppScrollStyle {
     static func apply(to scrollView: NSScrollView, scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero) {
         scrollView.scrollerStyle = .legacy
         scrollView.autohidesScrollers = true
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
         scrollView.usesPredominantAxisScrolling = true
         scrollView.verticalScrollElasticity = .automatic
         scrollView.horizontalScrollElasticity = .none
         scrollView.contentView.copiesOnScroll = false
         scrollView.drawsBackground = false
         scrollView.contentView.drawsBackground = false
-        scrollView.scrollerInsets = scrollerInsets
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        updateScrollerInsets(scrollView: scrollView, scrollerInsets: scrollerInsets)
 
         scrollView.verticalScroller?.scrollerStyle = .legacy
         scrollView.horizontalScroller?.scrollerStyle = .legacy
-        scrollView.contentView.postsBoundsChangedNotifications = true
+    }
+
+    static func updateScrollerInsets(scrollView: NSScrollView, scrollerInsets: NSEdgeInsets) {
+        scrollView.scrollerInsets = scrollerInsets
+        scrollView.tile()
     }
 
     static func updateVerticalElasticity(scrollView: NSScrollView) {
@@ -90,7 +97,6 @@ struct AppScrollBoundsObserver: NSViewRepresentable {
 
 final class AppScrollStyleAnchorView: NSView {
     weak var coordinator: AppScrollBoundsObserver.Coordinator?
-    var scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero
     private var didConfigure = false
 
     override func viewDidMoveToWindow() {
@@ -101,10 +107,8 @@ final class AppScrollStyleAnchorView: NSView {
     fileprivate func attachIfNeeded() {
         guard let scrollView = enclosingScrollView else { return }
         if !didConfigure {
-            AppScrollStyle.apply(to: scrollView, scrollerInsets: scrollerInsets)
+            AppScrollStyle.apply(to: scrollView)
             didConfigure = true
-        } else {
-            scrollView.scrollerInsets = scrollerInsets
         }
         coordinator?.bind(scrollView: scrollView)
     }
@@ -112,16 +116,11 @@ final class AppScrollStyleAnchorView: NSView {
 
 /// Attaches once when embedded in a SwiftUI `ScrollView` and applies `AppScrollStyle`.
 private struct AppScrollStyleConfigurator: NSViewRepresentable {
-    var scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero
-
     func makeNSView(context: Context) -> AppScrollStyleAnchorView {
-        let view = AppScrollStyleAnchorView()
-        view.scrollerInsets = scrollerInsets
-        return view
+        AppScrollStyleAnchorView()
     }
 
     func updateNSView(_ nsView: AppScrollStyleAnchorView, context: Context) {
-        nsView.scrollerInsets = scrollerInsets
         nsView.attachIfNeeded()
     }
 }
@@ -189,9 +188,9 @@ extension View {
     }
 
     /// Standard macOS scrollers and trackpad scrolling for SwiftUI `ScrollView` content.
-    func appScrollStyle(scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero) -> some View {
+    func appScrollStyle() -> some View {
         background {
-            AppScrollStyleConfigurator(scrollerInsets: scrollerInsets)
+            AppScrollStyleConfigurator()
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }

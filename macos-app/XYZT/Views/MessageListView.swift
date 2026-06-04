@@ -9,7 +9,6 @@ struct MessageListView: View {
     var onToolExpandedChange: ((String, String, Bool) -> Void)?
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
-    var scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero
     /// When set, message column is capped and centered (expanded window).
     var contentMaxWidth: CGFloat?
     @Environment(\.appFontSettings) private var fontSettings
@@ -56,7 +55,7 @@ struct MessageListView: View {
                     .padding(.top, topInset)
                     .frame(maxWidth: contentMaxWidth ?? .infinity)
                     .frame(maxWidth: .infinity)
-                    .appScrollStyle(scrollerInsets: scrollerInsets)
+                    .appScrollStyle()
                     .appScrollBottomObserver { distance in
                         let atBottom = distance <= Self.atBottomThreshold
                         if atBottom {
@@ -133,7 +132,6 @@ struct MessageListView: View {
             }
             return
         }
-        // Run after layout so resize / new content scrolls to the true bottom.
         DispatchQueue.main.async {
             perform()
             DispatchQueue.main.async {

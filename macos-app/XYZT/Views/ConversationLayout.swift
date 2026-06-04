@@ -44,10 +44,6 @@ struct ConversationLayout<Header: View>: View {
                     externalTitleBar: usesExternalTitleBar
                 ),
                 bottomInset: FloatingChromeMetrics.inputOverlayHeight,
-                scrollerInsets: FloatingChromeMetrics.conversationScrollerInsets(
-                    expanded: expandedMode,
-                    externalTitleBar: usesExternalTitleBar
-                ),
                 contentMaxWidth: expandedContentMaxWidth
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)

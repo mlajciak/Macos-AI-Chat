@@ -100,38 +100,47 @@ struct ChatInputBar: View {
     }
 
     private var sendButton: some View {
-        Button(action: submit) {
-            Image(systemName: "arrow.up")
-                .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .bold))
-            .foregroundStyle(canSend ? Color.white : theme.secondaryMuted)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 6)
-            .background {
-                Capsule()
-                    .fill(canSend ? theme.accent : theme.fieldStroke)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Send")
+        circularActionButton(
+            systemImage: "arrow.up",
+            foreground: canSend ? Color.white : theme.secondaryMuted,
+            fill: canSend ? theme.accent : theme.fieldStroke,
+            accessibilityLabel: "Send",
+            action: submit
+        )
         .disabled(!canSend)
         .keyboardShortcut(.return, modifiers: expandedMode ? .command : [])
     }
 
     private var stopButton: some View {
-        Button(action: onStop) {
-            Image(systemName: "stop.fill")
+        circularActionButton(
+            systemImage: "stop.fill",
+            foreground: Color.white,
+            fill: Color.red.opacity(0.9),
+            accessibilityLabel: "Stop",
+            action: onStop
+        )
+        .help("Stop generating")
+    }
+
+    private func circularActionButton(
+        systemImage: String,
+        foreground: Color,
+        fill: Color,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
                 .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .bold))
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 6)
+                .foregroundStyle(foreground)
+                .frame(width: AppChrome.compactControlHeight, height: AppChrome.compactControlHeight)
                 .background {
-                    Capsule()
-                        .fill(Color.red.opacity(0.9))
+                    Circle()
+                        .fill(fill)
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Stop")
-        .help("Stop generating")
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var canSend: Bool {
