@@ -1,9 +1,26 @@
 import SwiftUI
 
+struct CompactHeaderToolbar: View {
+    @Bindable var viewModel: ChatViewModel
+    let windowAction: HeaderToolbarActions.WindowAction
+    var onClose: (() -> Void)?
+
+    private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
+
+    var body: some View {
+        HeaderToolbarActions(
+            viewModel: viewModel,
+            windowAction: windowAction,
+            onClose: onClose
+        )
+    }
+}
+
 struct HeaderToolbarActions: View {
     @Bindable var viewModel: ChatViewModel
     let windowAction: WindowAction
     var onClose: (() -> Void)?
+    var glassMaterial: NSVisualEffectView.Material = .hudWindow
 
     private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
 
@@ -34,11 +51,12 @@ struct HeaderToolbarActions: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 2) {
             HeaderToolbarIconButton(
                 systemImage: "square.and.pencil",
                 tooltip: "New chat session",
-                fontSettings: fontSettings
+                fontSettings: fontSettings,
+                glassMaterial: glassMaterial
             ) {
                 viewModel.createNewChat()
             }
@@ -46,7 +64,8 @@ struct HeaderToolbarActions: View {
             HeaderToolbarIconButton(
                 systemImage: "gearshape",
                 tooltip: "Settings",
-                fontSettings: fontSettings
+                fontSettings: fontSettings,
+                glassMaterial: glassMaterial
             ) {
                 viewModel.toggleSettings()
             }
@@ -54,7 +73,8 @@ struct HeaderToolbarActions: View {
             HeaderToolbarIconButton(
                 systemImage: windowAction.systemImage,
                 tooltip: windowAction.tooltip,
-                fontSettings: fontSettings
+                fontSettings: fontSettings,
+                glassMaterial: glassMaterial
             ) {
                 windowAction.perform()
             }
@@ -62,40 +82,13 @@ struct HeaderToolbarActions: View {
             if let onClose {
                 HeaderToolbarIconButton(
                     systemImage: "xmark",
-                    tooltip: "Hide \(AppBranding.name)",
+                    tooltip: "Hide window (⌘Q to quit)",
                     fontSettings: fontSettings,
-                    weight: .semibold
+                    weight: .semibold,
+                    glassMaterial: glassMaterial
                 ) {
                     onClose()
                 }
-            }
-        }
-    }
-}
-
-/// Expand-to-full-window and hide — used on the collapsed compact strip.
-struct CompactWindowToolbar: View {
-    let fontSettings: AppFontSettings
-    let onExpandWindow: () -> Void
-    let onClose: () -> Void
-
-    var body: some View {
-        HStack(spacing: 0) {
-            HeaderToolbarIconButton(
-                systemImage: "arrow.up.left.and.arrow.down.right",
-                tooltip: "Expand window",
-                fontSettings: fontSettings
-            ) {
-                onExpandWindow()
-            }
-
-            HeaderToolbarIconButton(
-                systemImage: "xmark",
-                tooltip: "Hide \(AppBranding.name)",
-                fontSettings: fontSettings,
-                weight: .semibold
-            ) {
-                onClose()
             }
         }
     }
@@ -106,17 +99,29 @@ struct HeaderToolbarIconButton: View {
     let tooltip: String
     let fontSettings: AppFontSettings
     var weight: AppTypography.Weight = .medium
+    var glassMaterial: NSVisualEffectView.Material = .hudWindow
     let action: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
-        MacNativeIconButton(
-            systemImage: systemImage,
-            tooltip: tooltip,
-            iconPointSize: fontSettings.iconPointSize,
-            weight: weight,
-            action: action
-        )
-        .frame(width: 24, height: 24)
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(fontSettings.font(size: fontSettings.iconPointSize, weight: weight))
+                .foregroundStyle(.primary)
+                .frame(width: 28, height: 28)
+                .background {
+                    GlassChromeBackground(
+                        material: glassMaterial,
+                        shape: .circle,
+                        isHovered: isHovered
+                    )
+                }
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .animation(.easeOut(duration: 0.15), value: isHovered)
+        .help(tooltip)
         .accessibilityLabel(tooltip)
     }
 }

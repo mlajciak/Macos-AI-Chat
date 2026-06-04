@@ -6,32 +6,59 @@ struct SessionBreadcrumbButton: View {
     @Bindable var viewModel: ChatViewModel
 
     private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
+    @State private var isHovered = false
 
     var body: some View {
-        Button(action: viewModel.toggleSessionBrowser) {
+        Button(action: breadcrumbAction) {
             HStack(spacing: 5) {
                 Image(systemName: "folder")
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
                     .foregroundStyle(.secondary)
-                Text(viewModel.activeProject.name)
-                    .font(fontSettings.font(for: .caption, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text("/")
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.tertiary)
-                Text(viewModel.activeChatTitle)
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                if viewModel.hasWorkspace {
+                    Text(viewModel.activeProject.name)
+                        .font(fontSettings.font(for: .caption, weight: .medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text("/")
+                        .font(fontSettings.font(for: .caption))
+                        .foregroundStyle(.tertiary)
+                    Text(viewModel.activeChatTitle)
+                        .font(fontSettings.font(for: .caption))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text("Open folder…")
+                        .font(fontSettings.font(for: .caption, weight: .medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
                 Image(systemName: "chevron.down")
                     .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
                     .foregroundStyle(.tertiary)
                     .rotationEffect(.degrees(viewModel.isSessionBrowserOpen ? 180 : 0))
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background {
+                GlassChromeBackground(
+                    material: .hudWindow,
+                    shape: .capsule,
+                    isHovered: isHovered
+                )
+            }
         }
         .buttonStyle(.plain)
-        .macTooltip("Browse projects and sessions")
+        .onHover { isHovered = $0 }
+        .animation(.easeOut(duration: 0.15), value: isHovered)
+        .macTooltip(viewModel.hasWorkspace ? "Browse projects and sessions" : "Open a project folder")
+    }
+
+    private func breadcrumbAction() {
+        if viewModel.hasWorkspace {
+            viewModel.toggleSessionBrowser()
+        } else {
+            viewModel.openProjectFolder()
+        }
     }
 }
 
@@ -51,36 +78,48 @@ struct SessionBrowserOverlay: View {
             fontSettings: fontSettings,
             onClose: { viewModel.closeOverlays() }
         ) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    OpenFolderMenuRow(
-                        fontSettings: fontSettings,
-                        action: viewModel.openProjectFolder
-                    )
-
-                    ForEach(viewModel.recentProjects) { project in
-                        ProjectFolderSection(
-                            project: project,
-                            threads: viewModel.threads(for: project.id),
-                            activeThreadId: viewModel.activeThreadId,
-                            fontSettings: fontSettings,
-                            onSelect: { viewModel.selectThread($0) },
-                            onDelete: { viewModel.deleteThread($0) }
-                        )
-                    }
-                }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 12)
-                .appScrollStyle()
-            }
-            .scrollbarsWhenNeeded()
+            SessionProjectTree(viewModel: viewModel)
         }
+    }
+}
+
+// MARK: - Project / session tree (compact overlay + expanded sidebar)
+
+struct SessionProjectTree: View {
+    @Bindable var viewModel: ChatViewModel
+
+    private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                OpenFolderMenuRow(
+                    fontSettings: fontSettings,
+                    action: viewModel.openProjectFolder
+                )
+
+                ForEach(viewModel.recentProjects) { project in
+                    ProjectFolderSection(
+                        project: project,
+                        threads: viewModel.threads(for: project.id),
+                        activeThreadId: viewModel.activeThreadId,
+                        fontSettings: fontSettings,
+                        onSelect: { viewModel.selectThread($0) },
+                        onDelete: { viewModel.deleteThread($0) }
+                    )
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .appScrollStyle()
+        }
+        .scrollbarsWhenNeeded()
     }
 }
 
 // MARK: - Open folder
 
-private struct OpenFolderMenuRow: View {
+struct OpenFolderMenuRow: View {
     let fontSettings: AppFontSettings
     let action: () -> Void
 
@@ -115,7 +154,7 @@ private struct OpenFolderMenuRow: View {
 
 // MARK: - Folder tree
 
-private struct ProjectFolderSection: View {
+struct ProjectFolderSection: View {
     let project: Project
     let threads: [ChatThread]
     let activeThreadId: String
@@ -151,9 +190,10 @@ private struct ProjectFolderSection: View {
     }
 }
 
-private struct SessionTreeRow: View {
+struct SessionTreeRow: View {
     private static let rowHeight: CGFloat = 32
-    private static let trailingSlotWidth: CGFloat = 128
+    private static let trailingOverlayWidth: CGFloat = 88
+    private static let titleTrailingFadeWidth: CGFloat = 18
 
     let thread: ChatThread
     let isActive: Bool
@@ -167,42 +207,86 @@ private struct SessionTreeRow: View {
         HStack(alignment: .center, spacing: 8) {
             SessionStatusIndicator(isRunning: thread.isRunning)
 
-            Text(thread.title)
-                .font(fontSettings.font(for: .caption))
-                .foregroundStyle(isActive ? Color.accentColor : .primary)
-                .lineLimit(1)
-
-            Spacer(minLength: 4)
-
-            HStack(spacing: 8) {
-                Text(SessionRelativeTime.label(since: thread.lastActiveAt))
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.secondary)
+            ZStack(alignment: .trailing) {
+                Text(thread.title)
+                    .font(fontSettings.font(for: .caption, weight: isActive ? .semibold : .regular))
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .mask(titleFadeMask)
 
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
-                        .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .medium))
-                        .frame(width: 16, height: 16)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.red.opacity(0.85))
-                .macTooltip("Delete session")
+                trailingActionsOverlay
             }
-            .frame(width: Self.trailingSlotWidth, alignment: .trailing)
-            .opacity(isHovered ? 1 : 0)
-            .allowsHitTesting(isHovered)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 10)
         .pillRow(height: Self.rowHeight)
         .pillBackground(fill: rowBackground)
+        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .onTapGesture(perform: onSelect)
         .onHover { isHovered = $0 }
     }
 
+    private var titleFadeMask: some View {
+        let fadeWidth = isHovered
+            ? Self.trailingOverlayWidth + Self.titleTrailingFadeWidth
+            : Self.titleTrailingFadeWidth
+
+        return HStack(spacing: 0) {
+            Rectangle().fill(Color.black)
+            LinearGradient(
+                colors: [.black, .clear],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: fadeWidth)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var trailingActionsOverlay: some View {
+        HStack(spacing: 6) {
+            Text(SessionRelativeTime.label(since: thread.lastActiveAt))
+                .font(fontSettings.font(for: .caption))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")
+                    .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .medium))
+                    .frame(width: 16, height: 16)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.red.opacity(0.85))
+            .macTooltip("Delete session")
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 2)
+        .frame(width: Self.trailingOverlayWidth, alignment: .trailing)
+        .background(alignment: .trailing) {
+            LinearGradient(
+                colors: [.clear, overlayScrimTrailing],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: Self.trailingOverlayWidth + 16)
+        }
+        .opacity(isHovered ? 1 : 0)
+        .allowsHitTesting(isHovered)
+        .animation(.easeOut(duration: 0.15), value: isHovered)
+    }
+
+    /// Matches the row pill fill so the title fades under the trailing overlay.
+    private var overlayScrimTrailing: Color {
+        if isActive {
+            return Color.primary.opacity(0.1)
+        }
+        return Color.primary.opacity(0.07)
+    }
+
     private var rowBackground: Color {
         if isActive {
-            return Color.accentColor.opacity(0.12)
+            return Color.primary.opacity(0.1)
         }
         if isHovered {
             return Color.primary.opacity(0.07)
@@ -213,7 +297,7 @@ private struct SessionTreeRow: View {
 
 // MARK: - Session status (9×9)
 
-private struct SessionStatusIndicator: View {
+struct SessionStatusIndicator: View {
     static let size: CGFloat = 9
 
     let isRunning: Bool
@@ -252,7 +336,7 @@ struct RunningDotsIndicator: View {
             ) {
                 ForEach(0 ..< columns * rows, id: \.self) { index in
                     Circle()
-                        .fill(Color.accentColor.opacity(dotOpacity(index: index, tick: tick)))
+                        .fill(Color.primary.opacity(dotOpacity(index: index, tick: tick)))
                         .frame(width: dotSize, height: dotSize)
                 }
             }

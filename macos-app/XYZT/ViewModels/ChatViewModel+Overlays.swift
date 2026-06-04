@@ -30,4 +30,11 @@ extension ChatViewModel {
             isSettingsOpen = false
         }
     }
+
+    func toggleExpandedSidebar() {
+        withAnimation(.easeInOut(duration: 0.22)) {
+            isExpandedSidebarVisible.toggle()
+        }
+        onExpandedSidebarVisibilityChanged?()
+    }
 }

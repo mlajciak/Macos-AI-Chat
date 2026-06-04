@@ -49,6 +49,80 @@ struct GlassSurface: View {
     }
 }
 
+enum GlassChromeShape {
+    case circle
+    case capsule
+}
+
+/// Frosted glass chip for header controls (resting glass; brighter on hover).
+struct GlassChromeBackground: View {
+    var material: NSVisualEffectView.Material = .hudWindow
+    var shape: GlassChromeShape = .circle
+    var isHovered: Bool = false
+
+    private var topHighlight: CGFloat { isHovered ? 0.2 : 0.14 }
+    private var bottomHighlight: CGFloat { isHovered ? 0.06 : 0.03 }
+    private var borderTop: CGFloat { isHovered ? 0.42 : 0.32 }
+    private var borderBottom: CGFloat { isHovered ? 0.14 : 0.08 }
+
+    var body: some View {
+        let fillGradient = LinearGradient(
+            colors: [
+                Color.white.opacity(topHighlight),
+                Color.white.opacity(bottomHighlight),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        let borderGradient = LinearGradient(
+            colors: [
+                Color.white.opacity(borderTop),
+                Color.white.opacity(borderBottom),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+
+        Group {
+            switch shape {
+            case .circle:
+                glassLayer(
+                    fillGradient: fillGradient,
+                    borderGradient: borderGradient,
+                    clip: Circle(),
+                    stroke: Circle()
+                )
+            case .capsule:
+                glassLayer(
+                    fillGradient: fillGradient,
+                    borderGradient: borderGradient,
+                    clip: Capsule(style: .continuous),
+                    stroke: Capsule(style: .continuous)
+                )
+            }
+        }
+    }
+
+    private func glassLayer<S: InsettableShape>(
+        fillGradient: LinearGradient,
+        borderGradient: LinearGradient,
+        clip: S,
+        stroke: S
+    ) -> some View {
+        ZStack {
+            VisualEffectBackground(material: material, blendingMode: .withinWindow, emphasized: isHovered)
+            clip.fill(fillGradient).blendMode(.plusLighter)
+        }
+        .clipShape(clip)
+        .overlay {
+            stroke.strokeBorder(borderGradient, lineWidth: 0.5)
+        }
+    }
+}
+
+/// Back-compat alias for toolbar chips.
+typealias GlassIconHoverBackground = GlassChromeBackground
+
 extension GlassSurface {
     static func input(material: NSVisualEffectView.Material) -> GlassSurface {
         GlassSurface(material: material, cornerRadius: 14)

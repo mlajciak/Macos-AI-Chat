@@ -10,8 +10,12 @@ final class ChatViewModel {
     var selectedModelId = ""
     var isSessionBrowserOpen = false
     var isSettingsOpen = false
+    var isExpandedSidebarVisible = true
+    var onExpandedSidebarVisibilityChanged: (() -> Void)?
     var recentlyOpenedProjectIds: [String] = []
     let preferences = AppPreferences()
+
+    private var activeGenerationTask: Task<Void, Never>?
 
     var draft: String {
         get { activeThread.draft }
@@ -19,14 +23,10 @@ final class ChatViewModel {
     }
 
     init() {
-        let seed = ChatThreadCatalog.demoThreads()
-        threads = seed
-        activeThreadId = seed[0].id
-        selectedProjectId = seed[0].projectId
-        var seenProjects = Set<String>()
-        recentlyOpenedProjectIds = seed.compactMap { thread in
-            seenProjects.insert(thread.projectId).inserted ? thread.projectId : nil
-        }
+        threads = []
+        activeThreadId = ""
+        selectedProjectId = ""
+        bootstrapWorkspace()
         syncSelectedModel()
     }
 
@@ -41,8 +41,10 @@ final class ChatViewModel {
     }
 
     var activeThread: ChatThread {
-        threads.first { $0.id == activeThreadId }
-            ?? threads[0]
+        if let thread = threads.first(where: { $0.id == activeThreadId }) {
+            return thread
+        }
+        return ChatThread.new(projectId: selectedProjectId)
     }
 
     var activeChatTitle: String {
@@ -54,42 +56,73 @@ final class ChatViewModel {
     }
 
     func selectProject(_ projectId: String) {
+        guard ProjectCatalog.isUserProject(projectId) else { return }
+        if hasWorkspace, selectedProjectId != projectId {
+            persistCurrentProject()
+        }
         selectedProjectId = projectId
         recordProjectOpened(projectId)
-        if let thread = threads.last(where: { $0.projectId == projectId }) {
+        loadProjectWorkspace(projectId)
+        let projectThreads = threads(for: projectId)
+        if let thread = projectThreads.first {
             activeThreadId = thread.id
             touchActiveThread()
         } else {
             let thread = ChatThread.new(projectId: projectId)
             threads.append(thread)
             activeThreadId = thread.id
+            persistCurrentProject()
         }
     }
 
     func send() {
+        guard hasWorkspace else { return }
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
         draft = ""
         let now = Date().timeIntervalSince1970
         let userMessageId = UUID().uuidString
+        let threadId = activeThreadId
         touchActiveThread()
+        var needsTitle = false
         mutateActiveThread { thread in
             if thread.title == "New chat" {
+                needsTitle = true
                 thread.title = Self.titleFromFirstMessage(text)
             }
             thread.session.reduce(.sendUser(content: text, id: userMessageId, createdAt: now))
             thread.session.reduce(.beginAssistantReply)
         }
+        if needsTitle {
+            scheduleTitleGeneration(userMessage: text, threadId: threadId)
+        }
 
-        let snapshot = session.messages
-        let modelId = selectedModelId
-        let apiKey = preferences.openRouterApiKey
-        Task {
-            let replyAt = Date().timeIntervalSince1970
-            let assistantId = UUID().uuidString
+        startGeneration(
+            messages: session.messages,
+            modelId: selectedModelId,
+            apiKey: preferences.openRouterApiKey
+        )
+    }
+
+    func stopGeneration() {
+        activeGenerationTask?.cancel()
+    }
+
+    private func startGeneration(messages: [ChatMessage], modelId: String, apiKey: String) {
+        activeGenerationTask?.cancel()
+        let threadId = activeThreadId
+        let replyAt = Date().timeIntervalSince1970
+        let assistantId = UUID().uuidString
+
+        activeGenerationTask = Task {
             var startedMessage = false
             var pendingThinkingCard: AgentToolCard?
+
+            defer {
+                activeGenerationTask = nil
+                finishGeneration(on: threadId)
+            }
 
             do {
                 guard preferences.hasOpenRouterApiKey else {
@@ -102,23 +135,43 @@ final class ChatViewModel {
                     )
                 }
                 try await ChatAgent.streamReply(
-                    messages: snapshot,
+                    messages: messages,
                     modelId: modelId,
                     apiKey: apiKey
                 ) { event in
                     switch event {
                     case let .thinkingStart(card):
                         pendingThinkingCard = card
-                    case let .thinkingDelta(cardId, delta):
                         if !startedMessage {
-                            self.mutateActiveThread { thread in
+                            self.applyGeneration(on: threadId) { thread in
                                 thread.session.reduce(.startAssistantMessage(id: assistantId, createdAt: replyAt))
                             }
                             startedMessage = true
                         }
-                        self.mutateActiveThread { thread in
+                        self.applyGeneration(on: threadId) { thread in
+                            thread.session.reduce(.startToolCard(messageId: assistantId, card: card))
+                            thread.session.reduce(.setToolExpanded(
+                                messageId: assistantId,
+                                toolId: card.id,
+                                isExpanded: true
+                            ))
+                        }
+                        pendingThinkingCard = nil
+                    case let .thinkingDelta(cardId, delta):
+                        if !startedMessage {
+                            self.applyGeneration(on: threadId) { thread in
+                                thread.session.reduce(.startAssistantMessage(id: assistantId, createdAt: replyAt))
+                            }
+                            startedMessage = true
+                        }
+                        self.applyGeneration(on: threadId) { thread in
                             if let pending = pendingThinkingCard {
                                 thread.session.reduce(.startToolCard(messageId: assistantId, card: pending))
+                                thread.session.reduce(.setToolExpanded(
+                                    messageId: assistantId,
+                                    toolId: pending.id,
+                                    isExpanded: true
+                                ))
                                 pendingThinkingCard = nil
                             }
                             thread.session.reduce(.appendToolBody(
@@ -132,18 +185,21 @@ final class ChatViewModel {
                     case let .textDelta(delta):
                         pendingThinkingCard = nil
                         if !startedMessage {
-                            self.mutateActiveThread { thread in
+                            self.applyGeneration(on: threadId) { thread in
                                 thread.session.reduce(.startAssistantMessage(id: assistantId, createdAt: replyAt))
                             }
                             startedMessage = true
                         }
-                        self.mutateActiveThread { thread in
+                        self.applyGeneration(on: threadId) { thread in
                             thread.session.reduce(.appendAssistantText(id: assistantId, delta: delta))
                         }
                     }
                 }
+            } catch is CancellationError {
+                return
             } catch {
-                self.mutateActiveThread { thread in
+                guard !Task.isCancelled else { return }
+                self.applyGeneration(on: threadId) { thread in
                     if startedMessage {
                         thread.session.reduce(.appendAssistantText(
                             id: assistantId,
@@ -158,10 +214,20 @@ final class ChatViewModel {
                     }
                 }
             }
-            self.mutateActiveThread { thread in
-                thread.session.reduce(.completeAssistantReply)
-            }
         }
+    }
+
+    func applyGeneration(on threadId: String, _ block: (inout ChatThread) -> Void) {
+        guard let index = threads.firstIndex(where: { $0.id == threadId }) else { return }
+        block(&threads[index])
+    }
+
+    private func finishGeneration(on threadId: String) {
+        applyGeneration(on: threadId) { thread in
+            guard thread.session.isStreaming else { return }
+            thread.session.reduce(.completeAssistantReply)
+        }
+        persistCurrentProject()
     }
 
     func setToolExpanded(messageId: String, toolId: String, isExpanded: Bool) {
@@ -175,6 +241,7 @@ final class ChatViewModel {
     }
 
     func clear() {
+        stopGeneration()
         mutateActiveThread { thread in
             thread.session.reduce(.clear)
             thread.title = "New chat"
@@ -185,6 +252,7 @@ final class ChatViewModel {
     func mutateActiveThread(_ block: (inout ChatThread) -> Void) {
         guard let index = threads.firstIndex(where: { $0.id == activeThreadId }) else { return }
         block(&threads[index])
+        persistCurrentProject()
     }
 
     private static func titleFromFirstMessage(_ text: String) -> String {

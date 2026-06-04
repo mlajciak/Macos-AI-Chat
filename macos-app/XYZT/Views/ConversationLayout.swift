@@ -9,9 +9,13 @@ struct ConversationLayout<Header: View>: View {
     let isStreaming: Bool
     let expandedMode: Bool
     let onSend: () -> Void
+    let onStop: () -> Void
     var onToolExpandedChange: ((String, String, Bool) -> Void)?
     var usesHudMaterial: Bool = false
+    var usesExternalTitleBar: Bool = false
     @Environment(\.appFontSettings) private var fontSettings
+    @State private var isAtBottom = true
+    @State private var scrollToBottomSignal = 0
     @ViewBuilder var header: () -> Header
 
     private var glassMaterial: NSVisualEffectView.Material {
@@ -31,20 +35,31 @@ struct ConversationLayout<Header: View>: View {
             MessageListView(
                 messages: messages,
                 isStreaming: isStreaming,
+                scrollToBottomSignal: scrollToBottomSignal,
+                onAtBottomChange: { isAtBottom = $0 },
                 onToolExpandedChange: onToolExpandedChange,
-                topInset: FloatingChromeMetrics.headerScrollInset(expanded: expandedMode),
+                topInset: FloatingChromeMetrics.headerScrollInset(
+                    expanded: expandedMode,
+                    externalTitleBar: usesExternalTitleBar
+                ),
                 bottomInset: FloatingChromeMetrics.inputOverlayHeight,
+                scrollerInsets: FloatingChromeMetrics.conversationScrollerInsets(
+                    expanded: expandedMode,
+                    externalTitleBar: usesExternalTitleBar
+                ),
                 contentMaxWidth: expandedContentMaxWidth
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            FloatingHeaderChrome(
-                expanded: expandedMode,
-                chromeBlurMaterial: chromeBlurMaterial,
-                contentMaxWidth: expandedContentMaxWidth,
-                content: header
-            )
-            .zIndex(1)
+            if !usesExternalTitleBar {
+                FloatingHeaderChrome(
+                    expanded: expandedMode,
+                    chromeBlurMaterial: chromeBlurMaterial,
+                    contentMaxWidth: expandedContentMaxWidth,
+                    content: header
+                )
+                .zIndex(1)
+            }
 
             ZStack(alignment: .bottom) {
                 ChromeEdgeBlur(
@@ -55,8 +70,18 @@ struct ConversationLayout<Header: View>: View {
                 )
                 .allowsHitTesting(false)
 
-                VStack(spacing: 0) {
+                VStack(spacing: 8) {
                     Spacer(minLength: 0)
+
+                    if !isAtBottom, !messages.isEmpty {
+                        JumpToBottomButton(fontSettings: fontSettings) {
+                            scrollToBottomSignal += 1
+                        }
+                        .frame(maxWidth: expandedContentMaxWidth ?? .infinity)
+                        .frame(maxWidth: .infinity)
+                        .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                    }
+
                     ChatInputBar(
                         draft: $draft,
                         selectedModelId: $selectedModelId,
@@ -64,6 +89,7 @@ struct ConversationLayout<Header: View>: View {
                         fontSettings: fontSettings,
                         isStreaming: isStreaming,
                         onSend: onSend,
+                        onStop: onStop,
                         expandedMode: expandedMode,
                         usesHudMaterial: usesHudMaterial
                     )
@@ -75,6 +101,7 @@ struct ConversationLayout<Header: View>: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .zIndex(1)
+            .animation(.easeInOut(duration: 0.18), value: isAtBottom)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -89,8 +116,10 @@ extension ConversationLayout where Header == EmptyView {
         isStreaming: Bool,
         expandedMode: Bool,
         onSend: @escaping () -> Void,
+        onStop: @escaping () -> Void,
         onToolExpandedChange: ((String, String, Bool) -> Void)? = nil,
-        usesHudMaterial: Bool = false
+        usesHudMaterial: Bool = false,
+        usesExternalTitleBar: Bool = false
     ) {
         self._draft = draft
         self._selectedModelId = selectedModelId
@@ -99,8 +128,10 @@ extension ConversationLayout where Header == EmptyView {
         self.isStreaming = isStreaming
         self.expandedMode = expandedMode
         self.onSend = onSend
+        self.onStop = onStop
         self.onToolExpandedChange = onToolExpandedChange
         self.usesHudMaterial = usesHudMaterial
+        self.usesExternalTitleBar = usesExternalTitleBar
         self.header = { EmptyView() }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-enum WindowMode: String {
+enum WindowMode: String, Equatable {
     case compact
     case expanded
 }

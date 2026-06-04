@@ -13,7 +13,7 @@ enum SessionEvent {
     case clear
 }
 
-struct ChatSessionState {
+struct ChatSessionState: Codable {
     var messages: [ChatMessage] = []
     var pendingReplyCount = 0
 

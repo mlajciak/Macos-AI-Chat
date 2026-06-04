@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @main
@@ -10,16 +11,33 @@ struct XYZTApp: App {
         }
         .commands {
             CommandGroup(replacing: .newItem) {}
+
+            CommandGroup(replacing: .appTermination) {
+                Button("Quit \(AppBranding.name)") {
+                    NSApp.terminate(nil)
+                }
+                .keyboardShortcut("q")
+            }
+
             CommandMenu("Window") {
                 Button("Show \(AppBranding.name)") {
                     appDelegate.showChatWindow()
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
 
-                Button("Toggle Compact / Expanded") {
-                    appDelegate.toggleWindowMode()
+                Divider()
+
+                Button("Hide \(AppBranding.name)") {
+                    appDelegate.windowController.hideWindow()
                 }
-                .keyboardShortcut("m", modifiers: [.command, .option])
+                .keyboardShortcut("w", modifiers: .command)
+
+                Divider()
+
+                Button("Toggle Expanded Window") {
+                    appDelegate.windowController.toggleMode()
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
             }
         }
     }

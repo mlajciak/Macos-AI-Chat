@@ -1,78 +1,132 @@
+import AppKit
 import SwiftUI
 
 struct MessageListView: View {
     let messages: [ChatMessage]
     let isStreaming: Bool
+    var scrollToBottomSignal: Int = 0
+    var onAtBottomChange: ((Bool) -> Void)?
     var onToolExpandedChange: ((String, String, Bool) -> Void)?
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
+    var scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero
     /// When set, message column is capped and centered (expanded window).
     var contentMaxWidth: CGFloat?
     @Environment(\.appFontSettings) private var fontSettings
 
-    private var scrollAnchorId: String {
-        if let last = messages.last, last.role == .assistant, last.hasVisibleContent {
-            return last.id
-        }
-        return "scroll-end"
-    }
+    @State private var scrollPinTask: Task<Void, Never>?
+    @State private var stickToBottom = true
+
+    private static let scrollEndId = "scroll-end"
+    private static let atBottomThreshold: CGFloat = 36
 
     private var scrollContentToken: String {
-        guard let last = messages.last else { return "" }
+        guard let last = messages.last else { return "empty" }
         let toolChars = last.toolCards.reduce(0) { $0 + $1.body.count }
         return "\(last.id)|\(last.content.count)|\(toolChars)|\(last.toolCards.count)"
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    if messages.isEmpty {
-                        Text("Ask anything…")
-                            .appFont(.body, settings: fontSettings)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                    } else {
+        GeometryReader { viewport in
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
                         ForEach(messages) { message in
                             MessageBubbleView(
                                 message: message,
                                 fontSettings: fontSettings,
+                                isActivelyStreaming: isStreaming
+                                    && message.role == .assistant
+                                    && message.id == messages.last?.id,
                                 onToolExpandedChange: { toolId, expanded in
                                     onToolExpandedChange?(message.id, toolId, expanded)
                                 }
                             )
                             .id(message.id)
                         }
-                    }
 
-                    Color.clear
-                        .frame(height: 4)
-                        .id("scroll-end")
+                        Color.clear
+                            .frame(height: 1)
+                            .id(Self.scrollEndId)
+                    }
+                    .padding(.horizontal, MessageListLayout.horizontalPadding)
+                    .padding(.top, topInset)
+                    .padding(.bottom, bottomInset)
+                    .frame(maxWidth: contentMaxWidth ?? .infinity)
+                    .frame(maxWidth: .infinity)
+                    .appScrollStyle(scrollerInsets: scrollerInsets)
+                    .appScrollBottomObserver { distance in
+                        let atBottom = distance <= Self.atBottomThreshold
+                        if atBottom {
+                            stickToBottom = true
+                        } else if !isStreaming {
+                            stickToBottom = false
+                        }
+                        onAtBottomChange?(atBottom)
+                    }
                 }
-                .padding(.horizontal, MessageListLayout.horizontalPadding)
-                .padding(.top, topInset)
-                .padding(.bottom, bottomInset)
-                .frame(maxWidth: contentMaxWidth ?? .infinity)
-                .frame(maxWidth: .infinity)
-                .appScrollStyle()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentMargins(.top, topInset, for: .scrollIndicators)
-            .contentMargins(.bottom, bottomInset, for: .scrollIndicators)
-            .appVerticalScrollIndicators()
-            .onChange(of: messages.count) { _, _ in scrollToBottom(proxy) }
-            .onChange(of: scrollContentToken) { _, _ in scrollToBottom(proxy) }
-            .onChange(of: isStreaming) { _, streaming in
-                if streaming { scrollToBottom(proxy) }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+                .appVerticalScrollIndicators()
+                .onAppear {
+                    stickToBottom = true
+                    scrollToEnd(proxy: proxy, animated: false)
+                }
+                .onChange(of: messages.count) { _, _ in
+                    stickToBottom = true
+                    scrollToEnd(proxy: proxy, animated: false)
+                }
+                .onChange(of: scrollContentToken) { _, _ in
+                    guard stickToBottom || isStreaming else { return }
+                    scrollToEnd(proxy: proxy, animated: false, throttle: isStreaming)
+                }
+                .onChange(of: isStreaming) { _, streaming in
+                    if streaming {
+                        stickToBottom = true
+                        scrollToEnd(proxy: proxy, animated: false)
+                    }
+                }
+                .onChange(of: scrollToBottomSignal) { _, _ in
+                    stickToBottom = true
+                    scrollToEnd(proxy: proxy, animated: true)
+                }
+                .onChange(of: viewport.size) { _, _ in
+                    guard stickToBottom else { return }
+                    scrollToEnd(proxy: proxy, animated: false)
+                }
+                .onDisappear {
+                    scrollPinTask?.cancel()
+                }
             }
         }
     }
 
-    private func scrollToBottom(_ proxy: ScrollViewProxy) {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            proxy.scrollTo(scrollAnchorId, anchor: .bottom)
+    private func scrollToEnd(
+        proxy: ScrollViewProxy,
+        animated: Bool,
+        throttle: Bool = false
+    ) {
+        scrollPinTask?.cancel()
+        let perform = {
+            if animated {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(Self.scrollEndId, anchor: .bottom)
+                }
+            } else {
+                proxy.scrollTo(Self.scrollEndId, anchor: .bottom)
+            }
+        }
+        if throttle {
+            scrollPinTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(48))
+                guard !Task.isCancelled else { return }
+                perform()
+            }
+            return
+        }
+        // Run after layout so resize / new content scrolls to the true bottom.
+        DispatchQueue.main.async {
+            perform()
         }
     }
 }

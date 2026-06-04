@@ -10,6 +10,7 @@ enum MessageListLayout {
 struct MessageBubbleView: View {
     let message: ChatMessage
     let fontSettings: AppFontSettings
+    var isActivelyStreaming = false
     var onToolExpandedChange: ((String, Bool) -> Void)?
 
     private var isUser: Bool { message.role == .user }
@@ -24,6 +25,7 @@ struct MessageBubbleView: View {
             AssistantMessageView(
                 message: message,
                 fontSettings: fontSettings,
+                isActivelyStreaming: isActivelyStreaming,
                 onToolExpandedChange: onToolExpandedChange
             )
         }
@@ -33,25 +35,27 @@ struct MessageBubbleView: View {
 private struct AssistantMessageView: View {
     let message: ChatMessage
     let fontSettings: AppFontSettings
+    var isActivelyStreaming = false
     var onToolExpandedChange: ((String, Bool) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(message.toolCards.filter { !$0.body.isEmpty }) { card in
+            ForEach(message.toolCards) { card in
                 ToolCardView(
                     card: card,
-                    fontSettings: fontSettings
+                    fontSettings: fontSettings,
+                    isStreaming: isActivelyStreaming
                 ) { expanded in
                     onToolExpandedChange?(card.id, expanded)
                 }
             }
 
             if !message.content.isEmpty {
-                Text(message.content)
-                    .appFont(.body, settings: fontSettings)
-                    .foregroundStyle(.primary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                MessageMarkdownView(
+                    markdown: message.content,
+                    fontSettings: fontSettings
+                )
+                .textSelection(.enabled)
             }
         }
         .padding(.vertical, 10)

@@ -11,7 +11,7 @@ struct CompactHeaderView: View {
 
             Spacer(minLength: 4)
 
-            HeaderToolbarActions(
+            CompactHeaderToolbar(
                 viewModel: viewModel,
                 windowAction: .expand(action: onExpand),
                 onClose: onClose
@@ -30,15 +30,14 @@ struct CompactStripBarView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            MacNativeIconButton(
+            HeaderToolbarIconButton(
                 systemImage: "chevron.up",
                 tooltip: "Expand chat panel",
-                iconPointSize: fontSettings.iconPointSize,
-                weight: .semibold,
-                action: onRestorePanel
-            )
-            .frame(width: 24, height: 24)
-            .accessibilityLabel("Expand chat panel")
+                fontSettings: fontSettings,
+                weight: .semibold
+            ) {
+                onRestorePanel()
+            }
 
             Text(AppBranding.name)
                 .appFont(.caption, weight: .medium, settings: fontSettings)
@@ -47,30 +46,24 @@ struct CompactStripBarView: View {
 
             Spacer(minLength: 4)
 
-            CompactWindowToolbar(
+            HeaderToolbarIconButton(
+                systemImage: "arrow.up.left.and.arrow.down.right",
+                tooltip: "Expand window",
+                fontSettings: fontSettings
+            ) {
+                onExpandWindow()
+            }
+
+            HeaderToolbarIconButton(
+                systemImage: "xmark",
+                tooltip: "Hide \(AppBranding.name)",
                 fontSettings: fontSettings,
-                onExpandWindow: onExpandWindow,
-                onClose: onClose
-            )
+                weight: .semibold
+            ) {
+                onClose()
+            }
         }
         .padding(.horizontal, 10)
         .frame(height: FloatingChromeMetrics.compactStripHeight)
-    }
-}
-
-struct ExpandedFloatingHeaderView: View {
-    @Bindable var viewModel: ChatViewModel
-    let onCompact: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            SessionBreadcrumbButton(viewModel: viewModel)
-            Spacer()
-            HeaderToolbarActions(
-                viewModel: viewModel,
-                windowAction: .compact(action: onCompact)
-            )
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

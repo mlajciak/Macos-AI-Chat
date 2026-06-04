@@ -4,7 +4,7 @@ enum AgentToolKind: String, Codable, Equatable {
     case thinking
 }
 
-struct AgentToolCard: Identifiable, Equatable {
+struct AgentToolCard: Identifiable, Equatable, Codable {
     let id: String
     let kind: AgentToolKind
     var title: String

@@ -5,7 +5,7 @@ enum ChatRole: String, Codable {
     case assistant
 }
 
-struct ChatMessage: Identifiable, Equatable {
+struct ChatMessage: Identifiable, Equatable, Codable {
     let id: String
     let role: ChatRole
     var content: String

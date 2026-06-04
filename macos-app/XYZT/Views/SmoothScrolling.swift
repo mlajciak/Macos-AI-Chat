@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Standard macOS scroll view behavior (wide legacy scrollers, trackpad momentum).
 enum AppScrollStyle {
-    static func apply(to scrollView: NSScrollView) {
+    static func apply(to scrollView: NSScrollView, scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero) {
         scrollView.scrollerStyle = .legacy
         scrollView.autohidesScrollers = true
         scrollView.usesPredominantAxisScrolling = true
@@ -12,24 +12,85 @@ enum AppScrollStyle {
         scrollView.contentView.copiesOnScroll = false
         scrollView.drawsBackground = false
         scrollView.contentView.drawsBackground = false
+        scrollView.scrollerInsets = scrollerInsets
 
         scrollView.verticalScroller?.scrollerStyle = .legacy
         scrollView.horizontalScroller?.scrollerStyle = .legacy
+        scrollView.contentView.postsBoundsChangedNotifications = true
+    }
+
+    static func updateVerticalElasticity(scrollView: NSScrollView) {
+        guard let documentView = scrollView.documentView else { return }
+        let clip = scrollView.contentView.bounds
+        let contentHeight = documentView.frame.height
+        let fits = contentHeight <= clip.height + 2
+        scrollView.verticalScrollElasticity = fits ? .none : .automatic
     }
 }
 
-/// Attaches once when embedded in a SwiftUI `ScrollView` and applies `AppScrollStyle`.
-private struct AppScrollStyleConfigurator: NSViewRepresentable {
+/// Observes `NSScrollView` clip bounds for distance-from-bottom and elasticity when content fits.
+struct AppScrollBoundsObserver: NSViewRepresentable {
+    var onDistanceFromBottom: (CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onDistanceFromBottom: onDistanceFromBottom)
+    }
+
     func makeNSView(context: Context) -> AppScrollStyleAnchorView {
-        AppScrollStyleAnchorView()
+        let view = AppScrollStyleAnchorView()
+        view.coordinator = context.coordinator
+        return view
     }
 
     func updateNSView(_ nsView: AppScrollStyleAnchorView, context: Context) {
+        context.coordinator.onDistanceFromBottom = onDistanceFromBottom
+        nsView.coordinator = context.coordinator
         nsView.attachIfNeeded()
+    }
+
+    final class Coordinator {
+        var onDistanceFromBottom: (CGFloat) -> Void
+        private var boundsObserver: NSObjectProtocol?
+
+        init(onDistanceFromBottom: @escaping (CGFloat) -> Void) {
+            self.onDistanceFromBottom = onDistanceFromBottom
+        }
+
+        deinit {
+            if let boundsObserver {
+                NotificationCenter.default.removeObserver(boundsObserver)
+            }
+        }
+
+        func bind(scrollView: NSScrollView) {
+            if let boundsObserver {
+                NotificationCenter.default.removeObserver(boundsObserver)
+            }
+            boundsObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self, weak scrollView] _ in
+                guard let self, let scrollView else { return }
+                self.report(scrollView: scrollView)
+            }
+            report(scrollView: scrollView)
+        }
+
+        func report(scrollView: NSScrollView) {
+            AppScrollStyle.updateVerticalElasticity(scrollView: scrollView)
+            guard let documentView = scrollView.documentView else { return }
+            let clip = scrollView.contentView.bounds
+            let contentHeight = documentView.frame.height
+            let distance = contentHeight - clip.origin.y - clip.height
+            onDistanceFromBottom(max(0, distance))
+        }
     }
 }
 
-private final class AppScrollStyleAnchorView: NSView {
+final class AppScrollStyleAnchorView: NSView {
+    weak var coordinator: AppScrollBoundsObserver.Coordinator?
+    var scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero
     private var didConfigure = false
 
     override func viewDidMoveToWindow() {
@@ -38,17 +99,38 @@ private final class AppScrollStyleAnchorView: NSView {
     }
 
     fileprivate func attachIfNeeded() {
-        guard !didConfigure, let scrollView = enclosingScrollView else { return }
-        AppScrollStyle.apply(to: scrollView)
-        didConfigure = true
+        guard let scrollView = enclosingScrollView else { return }
+        if !didConfigure {
+            AppScrollStyle.apply(to: scrollView, scrollerInsets: scrollerInsets)
+            didConfigure = true
+        } else {
+            scrollView.scrollerInsets = scrollerInsets
+        }
+        coordinator?.bind(scrollView: scrollView)
+    }
+}
+
+/// Attaches once when embedded in a SwiftUI `ScrollView` and applies `AppScrollStyle`.
+private struct AppScrollStyleConfigurator: NSViewRepresentable {
+    var scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero
+
+    func makeNSView(context: Context) -> AppScrollStyleAnchorView {
+        let view = AppScrollStyleAnchorView()
+        view.scrollerInsets = scrollerInsets
+        return view
+    }
+
+    func updateNSView(_ nsView: AppScrollStyleAnchorView, context: Context) {
+        nsView.scrollerInsets = scrollerInsets
+        nsView.attachIfNeeded()
     }
 }
 
 extension View {
     /// Standard macOS scrollers and trackpad scrolling for SwiftUI `ScrollView` content.
-    func appScrollStyle() -> some View {
+    func appScrollStyle(scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero) -> some View {
         background {
-            AppScrollStyleConfigurator()
+            AppScrollStyleConfigurator(scrollerInsets: scrollerInsets)
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }
@@ -56,5 +138,13 @@ extension View {
 
     func appVerticalScrollIndicators() -> some View {
         scrollIndicators(.visible, axes: .vertical)
+    }
+
+    func appScrollBottomObserver(onDistanceFromBottom: @escaping (CGFloat) -> Void) -> some View {
+        background {
+            AppScrollBoundsObserver(onDistanceFromBottom: onDistanceFromBottom)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
     }
 }

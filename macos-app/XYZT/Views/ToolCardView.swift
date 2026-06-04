@@ -3,7 +3,12 @@ import SwiftUI
 struct ToolCardView: View {
     let card: AgentToolCard
     let fontSettings: AppFontSettings
+    var isStreaming = false
     let onExpandedChange: (Bool) -> Void
+
+    private var showsBody: Bool {
+        card.isExpanded || isStreaming
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -33,15 +38,25 @@ struct ToolCardView: View {
             }
             .buttonStyle(.plain)
 
-            if card.isExpanded, !card.body.isEmpty {
-                Text(card.body)
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 10)
-                    .padding(.top, 2)
+            if showsBody {
+                Group {
+                    if card.body.isEmpty {
+                        Text(isStreaming ? "Thinking…" : "No details")
+                            .font(fontSettings.font(for: .caption))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        MessageMarkdownView(
+                            markdown: card.body,
+                            fontSettings: fontSettings,
+                            secondary: true
+                        )
+                    }
+                }
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 10)
+                .padding(.top, 2)
             }
         }
         .background {

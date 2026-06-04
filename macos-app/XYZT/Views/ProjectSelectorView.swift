@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectSelectorView: View {
     @Binding var selectedProjectId: String
+    let projects: [Project]
     let fontSettings: AppFontSettings
     var prominent: Bool = false
 
@@ -45,7 +46,7 @@ struct ProjectSelectorView: View {
                 stroke: AppDropdownChrome.fieldStroke
             )
         } menuContent: { close in
-            ForEach(ProjectCatalog.demo) { project in
+            ForEach(projects) { project in
                 AppDropdownRow(
                     icon: "folder",
                     title: project.name,

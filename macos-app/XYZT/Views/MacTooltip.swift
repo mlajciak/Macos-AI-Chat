@@ -2,50 +2,9 @@ import AppKit
 import SwiftUI
 
 extension View {
-    /// Dock-style help tag anchored to this view's bounds.
+    /// Native macOS help tag (reliable placement vs. custom overlay).
     func macTooltip(_ text: String, arrowPointsDown: Bool? = nil) -> some View {
-        modifier(MacHelpTagHoverModifier(text: text, arrowPointsDown: arrowPointsDown))
-    }
-}
-
-// MARK: - SwiftUI hover
-
-private struct MacHelpTagHoverModifier: ViewModifier {
-    let text: String
-    let arrowPointsDown: Bool?
-
-    @State private var globalFrame: CGRect = .zero
-
-    func body(content: Content) -> some View {
-        content
-            .background {
-                GeometryReader { geo in
-                    Color.clear
-                        .allowsHitTesting(false)
-                        .onAppear {
-                            globalFrame = geo.frame(in: .global)
-                        }
-                        .onChange(of: geo.frame(in: .global)) { _, frame in
-                            globalFrame = frame
-                        }
-                }
-            }
-            .onHover { hovering in
-                guard !text.isEmpty else { return }
-                guard globalFrame.width > 1, globalFrame.height > 1 else { return }
-
-                if hovering {
-                    MacHelpTagPresenter.scheduleShow(
-                        text: text,
-                        anchorScreenRect: {
-                            MacHelpTagCoordinates.screenRect(globalFrame: globalFrame)
-                        },
-                        preferredArrowPointsDown: arrowPointsDown
-                    )
-                } else {
-                    MacHelpTagPresenter.cancel()
-                }
-            }
+        help(text)
     }
 }
 
@@ -55,6 +14,7 @@ struct MacNativeIconButton: NSViewRepresentable {
     let systemImage: String
     let tooltip: String
     let iconPointSize: CGFloat
+    var diameter: CGFloat = 28
     var weight: AppTypography.Weight = .medium
     var symbolColor: NSColor?
     let action: () -> Void
@@ -64,13 +24,19 @@ struct MacNativeIconButton: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> MacHelpTagButton {
-        let button = MacHelpTagButton(frame: NSRect(x: 0, y: 0, width: 24, height: 24))
+        let button = MacHelpTagButton(frame: NSRect(x: 0, y: 0, width: diameter, height: diameter))
+        button.controlDiameter = diameter
         configure(button, context: context)
         return button
     }
 
     func updateNSView(_ button: MacHelpTagButton, context: Context) {
+        button.controlDiameter = diameter
         configure(button, context: context)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: MacHelpTagButton, context: Context) -> CGSize? {
+        CGSize(width: diameter, height: diameter)
     }
 
     private func configure(_ button: MacHelpTagButton, context: Context) {
@@ -81,6 +47,7 @@ struct MacNativeIconButton: NSViewRepresentable {
             accessibilityDescription: tooltip
         )
         button.imagePosition = .imageOnly
+        button.imageScaling = .scaleProportionallyDown
         button.isBordered = false
         button.bezelStyle = .inline
         button.setButtonType(.momentaryChange)

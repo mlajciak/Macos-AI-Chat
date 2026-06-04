@@ -23,9 +23,23 @@ final class AgentStreamParser {
     private var thinkingCard: AgentToolCard?
     private var nextToolId = 0
 
+    /// Reasoning tokens from OpenRouter (`delta.reasoning` / `reasoning_details`).
+    func pushReasoning(_ delta: String) -> [StreamParserEvent] {
+        guard !delta.isEmpty else { return [] }
+        var events: [StreamParserEvent] = []
+        if mode != .think {
+            beginThinking(&events)
+        }
+        events.append(contentsOf: thinkingDelta(delta))
+        return events
+    }
+
     func push(_ delta: String) -> [StreamParserEvent] {
         guard !delta.isEmpty else { return [] }
         var events: [StreamParserEvent] = []
+        if mode == .think {
+            events.append(contentsOf: endThinking())
+        }
         var rest = carry + delta
         carry = ""
 

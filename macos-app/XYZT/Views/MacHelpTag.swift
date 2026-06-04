@@ -6,9 +6,22 @@ import SwiftUI
 enum MacHelpTagCoordinates {
     /// Converts a view's bounds to screen space (bottom-left origin).
     static func screenRect(for view: NSView) -> NSRect {
-        guard let window = view.window else { return .zero }
-        guard view.bounds.width > 0.5, view.bounds.height > 0.5 else { return .zero }
-        let inWindow = view.convert(view.bounds, to: nil)
+        squareScreenRect(for: view) ?? .zero
+    }
+
+    /// Visible control bounds (square), not the full proposed layout rect.
+    static func squareScreenRect(for view: NSView) -> NSRect? {
+        guard let window = view.window else { return nil }
+        let bounds = view.bounds
+        guard bounds.width > 0.5, bounds.height > 0.5 else { return nil }
+        let side = min(bounds.width, bounds.height)
+        let square = NSRect(
+            x: (bounds.width - side) / 2,
+            y: (bounds.height - side) / 2,
+            width: side,
+            height: side
+        )
+        let inWindow = view.convert(square, to: nil)
         return window.convertToScreen(inWindow)
     }
 
@@ -49,7 +62,7 @@ enum MacHelpTagCoordinates {
 @MainActor
 enum MacHelpTagPresenter {
     private static let showDelay: TimeInterval = 0.45
-    private static let gap: CGFloat = 6
+    private static let gap: CGFloat = 3
     private static let horizontalMargin: CGFloat = 8
 
     private static var panel: NSPanel?
@@ -69,8 +82,7 @@ enum MacHelpTagPresenter {
 
         let work = DispatchWorkItem { [weak anchor] in
             guard let anchor, anchorView === anchor else { return }
-            let rect = MacHelpTagCoordinates.screenRect(for: anchor)
-            guard rect.width > 1, rect.height > 1 else { return }
+            guard let rect = MacHelpTagCoordinates.squareScreenRect(for: anchor) else { return }
             show(text: text, anchorScreenRect: rect, preferredArrowPointsDown: preferredArrowPointsDown)
         }
         showWorkItem = work
@@ -243,9 +255,10 @@ enum MacHelpTagPresenter {
 // MARK: - Metrics
 
 private enum MacHelpTagMetrics {
-    static let arrowWidth: CGFloat = 14
-    static let arrowHeight: CGFloat = 7
-    static let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+    static let arrowWidth: CGFloat = 12
+    static let arrowHeight: CGFloat = 6
+    static let maxTextWidth: CGFloat = 200
+    static let font = NSFont.systemFont(ofSize: 11, weight: .medium)
     static var textAttributes: [NSAttributedString.Key: Any] { [.font: font] }
 }
 
@@ -263,12 +276,14 @@ private struct MacHelpTagBubble: View {
             }
 
             Text(text)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(MacHelpTagColors.text)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: true)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: MacHelpTagMetrics.maxTextWidth)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background {
                     Capsule(style: .continuous)
                         .fill(MacHelpTagColors.fill)
@@ -341,11 +356,35 @@ private struct MacHelpTagArrowShape: Shape {
 // MARK: - Toolbar button
 
 final class MacHelpTagButton: NSButton {
+    var controlDiameter: CGFloat = 28
+
     var helpTagText: String = "" {
         didSet {
-            toolTip = nil
+            toolTip = helpTagText.isEmpty ? nil : helpTagText
             setAccessibilityLabel(helpTagText)
         }
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: controlDiameter, height: controlDiameter)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        wantsLayer = true
+        layer?.masksToBounds = true
+        updateHoverBackground(isHovered: false)
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        let side = min(newSize.width, newSize.height, controlDiameter)
+        super.setFrameSize(NSSize(width: side, height: side))
+    }
+
+    override func layout() {
+        super.layout()
+        let side = min(bounds.width, bounds.height)
+        layer?.cornerRadius = side / 2
     }
 
     override func updateTrackingAreas() {
@@ -361,11 +400,16 @@ final class MacHelpTagButton: NSButton {
     }
 
     override func mouseEntered(with event: NSEvent) {
-        guard !helpTagText.isEmpty else { return }
-        MacHelpTagPresenter.scheduleShow(text: helpTagText, anchor: self)
+        updateHoverBackground(isHovered: true)
     }
 
     override func mouseExited(with event: NSEvent) {
-        MacHelpTagPresenter.cancel(for: self)
+        updateHoverBackground(isHovered: false)
+    }
+
+    private func updateHoverBackground(isHovered: Bool) {
+        layer?.backgroundColor = isHovered
+            ? NSColor.labelColor.withAlphaComponent(0.12).cgColor
+            : nil
     }
 }

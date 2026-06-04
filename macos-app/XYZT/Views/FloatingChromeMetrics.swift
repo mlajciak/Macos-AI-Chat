@@ -16,6 +16,17 @@ enum FloatingChromeMetrics {
     /// Single-line collapsed compact bar (chevron + title + window actions).
     static let compactStripHeight: CGFloat = 40
     static let expandedTrafficLightInset: CGFloat = 28
+    /// Leading inset in the sidebar column for controls beside traffic lights.
+    static let expandedTrafficLightsLeadingWidth: CGFloat = 76
+    /// Title bar accessory sits after traffic lights; only a small gap is needed.
+    static let expandedTitleBarAccessoryLeadingInset: CGFloat = 6
+    /// Fallback when SwiftUI safe-area top is not yet measured.
+    static let expandedWindowTitlebarFallback: CGFloat = 28
+    static let expandedSidebarToolbarBandHeight: CGFloat = 32
+
+    static let sidebarMinWidth: CGFloat = 220
+    static let sidebarIdealWidth: CGFloat = 260
+    static let sidebarMaxWidth: CGFloat = 320
 
     static let topEdgeBlurHeight: CGFloat = 72
     static let bottomEdgeBlurHeight: CGFloat = 28
@@ -29,9 +40,25 @@ enum FloatingChromeMetrics {
         inputBarHeight + inputBarPadding + inputBottomPadding + chromeContentGap
     }
 
-    static func headerScrollInset(expanded: Bool) -> CGFloat {
-        let bar = headerTopPadding + headerBarHeight + headerBottomPadding + chromeContentGap
-        return expanded ? expandedTrafficLightInset + headerBarHeight + headerBottomPadding + chromeContentGap : bar
+    /// Height of the floating header overlay (compact or expanded in-window chrome).
+    static func headerOverlayHeight(expanded: Bool) -> CGFloat {
+        if expanded {
+            return expandedTrafficLightInset + headerBarHeight + headerBottomPadding + chromeContentGap
+        }
+        return headerTopPadding + headerBarHeight + headerBottomPadding + chromeContentGap
+    }
+
+    static func headerScrollInset(expanded: Bool, externalTitleBar: Bool = false) -> CGFloat {
+        if expanded && externalTitleBar {
+            return headerBottomPadding + chromeContentGap
+        }
+        return headerOverlayHeight(expanded: expanded)
+    }
+
+    /// Insets only the vertical scroller; scroll content still uses full `headerScrollInset` / `inputOverlayHeight`.
+    static func conversationScrollerInsets(expanded: Bool, externalTitleBar: Bool) -> NSEdgeInsets {
+        let top = externalTitleBar ? 0 : headerOverlayHeight(expanded: expanded)
+        return NSEdgeInsets(top: top, left: 0, bottom: inputOverlayHeight, right: 0)
     }
 
     static let inputHorizontalPadding: CGFloat = 12

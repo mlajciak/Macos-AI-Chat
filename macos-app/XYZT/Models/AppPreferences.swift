@@ -32,6 +32,20 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
+enum ChatTitleModelSource: String, CaseIterable, Identifiable, Codable {
+    case selectedChatModel
+    case custom
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .selectedChatModel: "Use selected chat model"
+        case .custom: "Custom model"
+        }
+    }
+}
+
 enum AppFontFamilyMode: String, CaseIterable, Identifiable {
     case system
     case mono
@@ -87,6 +101,9 @@ final class AppPreferences {
         static let customFontFamily = "xyzt.customFontFamily"
         static let menuModelIds = "xyzt.menuModelIds"
         static let modelLabels = "xyzt.modelLabels"
+        static let chatTitleModelSource = "xyzt.chatTitleModelSource"
+        static let chatTitleCustomModelId = "xyzt.chatTitleCustomModelId"
+        static let compactWindowAnchor = "xyzt.compactWindowAnchor"
     }
 
     var menuModelIds: [String] {
@@ -150,6 +167,18 @@ final class AppPreferences {
         didSet { UserDefaults.standard.set(customFontFamily, forKey: Keys.customFontFamily) }
     }
 
+    var chatTitleModelSource: ChatTitleModelSource {
+        didSet { UserDefaults.standard.set(chatTitleModelSource.rawValue, forKey: Keys.chatTitleModelSource) }
+    }
+
+    var chatTitleCustomModelId: String {
+        didSet { UserDefaults.standard.set(chatTitleCustomModelId, forKey: Keys.chatTitleCustomModelId) }
+    }
+
+    var compactWindowAnchor: CompactWindowAnchor {
+        didSet { UserDefaults.standard.set(compactWindowAnchor.rawValue, forKey: Keys.compactWindowAnchor) }
+    }
+
     var fontSettings: AppFontSettings {
         AppFontSettings(
             bodyPointSize: CGFloat(bodyPointSize),
@@ -191,6 +220,20 @@ final class AppPreferences {
         } else {
             fontFamilyMode = .mono
             customFontFamily = ""
+        }
+
+        if let raw = defaults.string(forKey: Keys.chatTitleModelSource),
+           let source = ChatTitleModelSource(rawValue: raw) {
+            chatTitleModelSource = source
+        } else {
+            chatTitleModelSource = .selectedChatModel
+        }
+        chatTitleCustomModelId = defaults.string(forKey: Keys.chatTitleCustomModelId) ?? ""
+        if let raw = defaults.string(forKey: Keys.compactWindowAnchor),
+           let anchor = CompactWindowAnchor(rawValue: raw) {
+            compactWindowAnchor = anchor
+        } else {
+            compactWindowAnchor = .default
         }
     }
 

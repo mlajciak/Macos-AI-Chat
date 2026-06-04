@@ -13,6 +13,7 @@ struct ChatRootView: View {
     var onCompactResizeStarted: (() -> Void)?
     var onCompactResizeEnded: (() -> Void)?
     var onCollapseToStrip: (() -> Void)?
+    var onCompactAnchorChange: (() -> Void)?
 
     private var isCompactStrip: Bool {
         mode == .compact && compactPresentation == .strip
@@ -20,45 +21,47 @@ struct ChatRootView: View {
 
     var body: some View {
         Group {
-            if mode == .compact {
-                if isCompactStrip {
-                    compactStripBody
-                } else {
-                    compactBody
-                }
+            if mode == .expanded {
+                ExpandedWindowLayout(viewModel: viewModel)
+            } else if isCompactStrip {
+                compactStripBody
             } else {
-                expandedBody
+                compactBody
             }
         }
         .appFontEnvironment(viewModel.preferences)
         .appMonoFont()
         .overlay {
-            if !isCompactStrip {
-                headerOverlays(usesHudMaterial: mode == .compact)
+            if mode == .compact, !isCompactStrip {
+                headerOverlays
                     .appFontContext(viewModel.preferences.fontSettings)
             }
         }
         .animation(.easeInOut(duration: 0.22), value: viewModel.isSessionBrowserOpen)
         .animation(.easeInOut(duration: 0.22), value: viewModel.isSettingsOpen)
         .animation(.easeInOut(duration: 0.22), value: compactPresentation)
+        .animation(.easeInOut(duration: 0.22), value: mode)
         .onChange(of: viewModel.preferences.menuModelIds) { _, _ in
             viewModel.syncSelectedModel()
+        }
+        .onChange(of: viewModel.preferences.compactWindowAnchor) { _, _ in
+            onCompactAnchorChange?()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
-    private func headerOverlays(usesHudMaterial: Bool) -> some View {
+    private var headerOverlays: some View {
         if viewModel.isSessionBrowserOpen {
             SessionBrowserOverlay(
                 viewModel: viewModel,
-                usesHudMaterial: usesHudMaterial
+                usesHudMaterial: true
             )
         }
         if viewModel.isSettingsOpen {
             SettingsOverlay(
                 preferences: viewModel.preferences,
-                usesHudMaterial: usesHudMaterial,
+                usesHudMaterial: true,
                 onClose: { viewModel.closeOverlays() }
             )
         }
@@ -84,40 +87,53 @@ struct ChatRootView: View {
             RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
         }
-        .overlay {
-            CompactWindowResizeOverlay(
-                minSize: ChatWindowController.compactStripSize,
-                maxSize: NSSize(
-                    width: ChatWindowController.compactMaxSize.width,
-                    height: ChatWindowController.compactStripSize.height
-                ),
-                isStripMode: true,
-                onResizeStarted: onCompactResizeStarted,
-                onResizeEnded: onCompactResizeEnded
-            )
-            .allowsHitTesting(true)
-        }
     }
 
     private var compactBody: some View {
-        ConversationLayout(
-            draft: $viewModel.draft,
-            selectedModelId: $viewModel.selectedModelId,
-            menuModels: viewModel.menuModels,
-            messages: viewModel.session.messages,
-            isStreaming: viewModel.session.isStreaming,
-            expandedMode: false,
-            onSend: { viewModel.send() },
-            onToolExpandedChange: { messageId, toolId, expanded in
-                viewModel.setToolExpanded(messageId: messageId, toolId: toolId, isExpanded: expanded)
-            },
-            usesHudMaterial: true
-        ) {
-            CompactHeaderView(
-                viewModel: viewModel,
-                onExpand: onExpand,
-                onClose: onClose
-            )
+        Group {
+            if viewModel.hasWorkspace {
+                ConversationLayout(
+                    draft: $viewModel.draft,
+                    selectedModelId: $viewModel.selectedModelId,
+                    menuModels: viewModel.menuModels,
+                    messages: viewModel.session.messages,
+                    isStreaming: viewModel.session.isStreaming,
+                    expandedMode: false,
+                    onSend: { viewModel.send() },
+                    onStop: { viewModel.stopGeneration() },
+                    onToolExpandedChange: { messageId, toolId, expanded in
+                        viewModel.setToolExpanded(
+                            messageId: messageId,
+                            toolId: toolId,
+                            isExpanded: expanded
+                        )
+                    },
+                    usesHudMaterial: true
+                ) {
+                    CompactHeaderView(
+                        viewModel: viewModel,
+                        onExpand: onExpand,
+                        onClose: onClose
+                    )
+                }
+            } else {
+                ZStack(alignment: .top) {
+                    OpenFolderGateView(
+                        fontSettings: viewModel.preferences.fontSettings,
+                        onOpenFolder: { viewModel.openProjectFolder() }
+                    )
+                    FloatingHeaderChrome(
+                        expanded: false,
+                        chromeBlurMaterial: FloatingChromeMetrics.chromeBlurMaterial(usesHudWindow: true)
+                    ) {
+                        CompactHeaderView(
+                            viewModel: viewModel,
+                            onExpand: onExpand,
+                            onClose: onClose
+                        )
+                    }
+                }
+            }
         }
         .background {
             VisualEffectBackground(
@@ -133,6 +149,7 @@ struct ChatRootView: View {
         }
         .overlay {
             CompactWindowResizeOverlay(
+                anchor: viewModel.preferences.compactWindowAnchor,
                 minSize: NSSize(
                     width: ChatWindowController.compactMinSize.width,
                     height: ChatWindowController.compactMinSize.height
@@ -147,34 +164,6 @@ struct ChatRootView: View {
                 onCollapseToStrip: onCollapseToStrip
             )
             .allowsHitTesting(true)
-        }
-    }
-
-    private var expandedBody: some View {
-        ConversationLayout(
-            draft: $viewModel.draft,
-            selectedModelId: $viewModel.selectedModelId,
-            menuModels: viewModel.menuModels,
-            messages: viewModel.session.messages,
-            isStreaming: viewModel.session.isStreaming,
-            expandedMode: true,
-            onSend: { viewModel.send() },
-            onToolExpandedChange: { messageId, toolId, expanded in
-                viewModel.setToolExpanded(messageId: messageId, toolId: toolId, isExpanded: expanded)
-            },
-            usesHudMaterial: false
-        ) {
-            ExpandedFloatingHeaderView(
-                viewModel: viewModel,
-                onCompact: onCompact
-            )
-        }
-        .background {
-            VisualEffectBackground(
-                material: .windowBackground,
-                blendingMode: .behindWindow,
-                emphasized: false
-            )
         }
     }
 }

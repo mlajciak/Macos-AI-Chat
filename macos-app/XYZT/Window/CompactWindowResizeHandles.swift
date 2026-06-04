@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct CompactWindowResizeOverlay: NSViewRepresentable {
+    let anchor: CompactWindowAnchor
     let minSize: NSSize
     let maxSize: NSSize
     var isStripMode: Bool = false
@@ -11,6 +12,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
 
     func makeNSView(context: Context) -> CompactResizeTrackingView {
         let view = CompactResizeTrackingView()
+        view.anchor = anchor
         view.minSize = minSize
         view.maxSize = maxSize
         view.isStripMode = isStripMode
@@ -21,16 +23,19 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: CompactResizeTrackingView, context: Context) {
+        nsView.anchor = anchor
         nsView.minSize = minSize
         nsView.maxSize = maxSize
         nsView.isStripMode = isStripMode
         nsView.onResizeStarted = onResizeStarted
         nsView.onResizeEnded = onResizeEnded
         nsView.onCollapseToStrip = onCollapseToStrip
+        nsView.window?.invalidateCursorRects(for: nsView)
     }
 }
 
 final class CompactResizeTrackingView: NSView {
+    var anchor: CompactWindowAnchor = .bottomRight
     var minSize = NSSize(width: 300, height: 380)
     var maxSize = NSSize(width: 560, height: 820)
     var isStripMode = false
@@ -38,7 +43,6 @@ final class CompactResizeTrackingView: NSView {
     var onResizeEnded: (() -> Void)?
     var onCollapseToStrip: (() -> Void)?
 
-    /// Generous strips so resize wins over the floating header and message list.
     private let edgeThickness: CGFloat = 28
     private let cornerLength: CGFloat = 40
 
@@ -66,20 +70,12 @@ final class CompactResizeTrackingView: NSView {
         discardCursorRects()
         guard bounds.width > 0, bounds.height > 0 else { return }
 
-        let corner = NSRect(x: 0, y: 0, width: cornerLength, height: cornerLength)
         if isStripMode {
-            addCursorRect(corner, cursor: .resizeLeft)
-        } else {
-            addCursorRect(corner, cursor: Self.topLeadingResizeCursor)
+            addStripResizeRects()
+            return
         }
 
-        if !isStripMode {
-            let top = NSRect(x: cornerLength, y: 0, width: max(0, bounds.width - cornerLength), height: edgeThickness)
-            if top.width > 0 { addCursorRect(top, cursor: .resizeUp) }
-        }
-
-        let left = NSRect(x: 0, y: cornerLength, width: edgeThickness, height: max(0, bounds.height - cornerLength))
-        if left.height > 0 { addCursorRect(left, cursor: .resizeLeft) }
+        addPanelResizeRects()
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -97,21 +93,16 @@ final class CompactResizeTrackingView: NSView {
         let mouse = NSEvent.mouseLocation
         let dx = mouse.x - resizeStartMouse.x
         let dy = mouse.y - resizeStartMouse.y
-
-        let anchorRight = resizeStartFrame.maxX
-        let anchorBottom = resizeStartFrame.minY
-
-        var width = resizeStartFrame.width - dx
-        var height = resizeStartFrame.height + dy
+        let pinned = anchor.pinnedCorner(in: resizeStartFrame)
 
         if isStripMode {
-            width = min(max(width, minSize.width), maxSize.width)
-            let origin = NSPoint(x: anchorRight - width, y: anchorBottom)
-            window.setFrame(NSRect(origin: origin, size: NSSize(width: width, height: resizeStartFrame.height)), display: true)
+            let width = clampedWidth(resizeStartFrame.width + horizontalDelta(dx))
+            let frame = anchor.frame(pinnedTo: pinned, size: NSSize(width: width, height: resizeStartFrame.height))
+            window.setFrame(frame, display: true)
             return
         }
 
-        let rawHeight = resizeStartFrame.height + dy
+        let rawHeight = resizeStartFrame.height + verticalDelta(dy)
         if rawHeight < minSize.height {
             isResizing = false
             onResizeEnded?()
@@ -119,11 +110,13 @@ final class CompactResizeTrackingView: NSView {
             return
         }
 
-        width = min(max(width, minSize.width), maxSize.width)
-        height = min(max(height, minSize.height), maxSize.height)
-
-        let origin = NSPoint(x: anchorRight - width, y: anchorBottom)
-        window.setFrame(NSRect(origin: origin, size: NSSize(width: width, height: height)), display: true)
+        let width = clampedWidth(resizeStartFrame.width + horizontalDelta(dx))
+        let height = min(max(rawHeight, minSize.height), maxSize.height)
+        let frame = anchor.frame(
+            pinnedTo: pinned,
+            size: NSSize(width: width, height: height)
+        )
+        window.setFrame(frame, display: true)
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -132,16 +125,158 @@ final class CompactResizeTrackingView: NSView {
         onResizeEnded?()
     }
 
+    // MARK: - Hit regions (opposite corner/edges from screen anchor)
+
     private func isResizePoint(_ point: NSPoint) -> Bool {
-        let onTop = !isStripMode && point.y < edgeThickness
-        let onLeft = point.x < edgeThickness
-        return onTop || onLeft
+        if isStripMode {
+            return isStripResizePoint(point)
+        }
+        return isPanelResizePoint(point)
     }
 
-    private static var topLeadingResizeCursor: NSCursor {
+    private func isPanelResizePoint(_ point: NSPoint) -> Bool {
+        switch anchor {
+        case .bottomRight:
+            return point.y < edgeThickness || point.x < edgeThickness
+        case .bottomLeft:
+            return point.y < edgeThickness || point.x > bounds.width - edgeThickness
+        case .topLeft:
+            return point.y > bounds.height - edgeThickness || point.x > bounds.width - edgeThickness
+        case .topRight:
+            return point.y > bounds.height - edgeThickness || point.x < edgeThickness
+        }
+    }
+
+    private func isStripResizePoint(_ point: NSPoint) -> Bool {
+        switch anchor {
+        case .bottomRight, .topRight:
+            return point.x < edgeThickness
+        case .bottomLeft, .topLeft:
+            return point.x > bounds.width - edgeThickness
+        }
+    }
+
+    private func addPanelResizeRects() {
+        switch anchor {
+        case .bottomRight:
+            addCornerRect(at: .topLeft)
+            addEdgeRect(.top)
+            addEdgeRect(.left)
+        case .bottomLeft:
+            addCornerRect(at: .topRight)
+            addEdgeRect(.top)
+            addEdgeRect(.right)
+        case .topLeft:
+            addCornerRect(at: .bottomRight)
+            addEdgeRect(.bottom)
+            addEdgeRect(.right)
+        case .topRight:
+            addCornerRect(at: .bottomLeft)
+            addEdgeRect(.bottom)
+            addEdgeRect(.left)
+        }
+    }
+
+    private func addStripResizeRects() {
+        switch anchor {
+        case .bottomRight, .topRight:
+            addEdgeRect(.left)
+        case .bottomLeft, .topLeft:
+            addEdgeRect(.right)
+        }
+    }
+
+    private enum ViewCorner {
+        case topLeft, topRight, bottomLeft, bottomRight
+    }
+
+    private enum ViewEdge {
+        case top, left, right, bottom
+    }
+
+    private func addCornerRect(at corner: ViewCorner) {
+        let rect: NSRect = switch corner {
+        case .topLeft:
+            NSRect(x: 0, y: 0, width: cornerLength, height: cornerLength)
+        case .topRight:
+            NSRect(x: bounds.width - cornerLength, y: 0, width: cornerLength, height: cornerLength)
+        case .bottomLeft:
+            NSRect(x: 0, y: bounds.height - cornerLength, width: cornerLength, height: cornerLength)
+        case .bottomRight:
+            NSRect(
+                x: bounds.width - cornerLength,
+                y: bounds.height - cornerLength,
+                width: cornerLength,
+                height: cornerLength
+            )
+        }
+        addCursorRect(rect, cursor: cursor(for: corner))
+    }
+
+    private func addEdgeRect(_ edge: ViewEdge) {
+        let rect: NSRect = switch edge {
+        case .top:
+            NSRect(x: cornerLength, y: 0, width: max(0, bounds.width - cornerLength * 2), height: edgeThickness)
+        case .bottom:
+            NSRect(
+                x: cornerLength,
+                y: bounds.height - edgeThickness,
+                width: max(0, bounds.width - cornerLength * 2),
+                height: edgeThickness
+            )
+        case .left:
+            NSRect(x: 0, y: cornerLength, width: edgeThickness, height: max(0, bounds.height - cornerLength * 2))
+        case .right:
+            NSRect(
+                x: bounds.width - edgeThickness,
+                y: cornerLength,
+                width: edgeThickness,
+                height: max(0, bounds.height - cornerLength * 2)
+            )
+        }
+        guard rect.width > 0, rect.height > 0 else { return }
+        addCursorRect(rect, cursor: cursor(for: edge))
+    }
+
+    private func cursor(for corner: ViewCorner) -> NSCursor {
         if #available(macOS 15.0, *) {
-            return NSCursor.frameResize(position: .topLeft, directions: [.inward, .outward])
+            let position: NSCursor.FrameResizePosition = switch corner {
+            case .topLeft: .topLeft
+            case .topRight: .topRight
+            case .bottomLeft: .bottomLeft
+            case .bottomRight: .bottomRight
+            }
+            return NSCursor.frameResize(position: position, directions: [.inward, .outward])
         }
         return .resizeLeft
+    }
+
+    private func cursor(for edge: ViewEdge) -> NSCursor {
+        switch edge {
+        case .top, .bottom: .resizeUp
+        case .left, .right: .resizeLeft
+        }
+    }
+
+    private func horizontalDelta(_ dx: CGFloat) -> CGFloat {
+        switch anchor {
+        case .bottomRight, .topRight:
+            return -dx
+        case .bottomLeft, .topLeft:
+            return dx
+        }
+    }
+
+    private func verticalDelta(_ dy: CGFloat) -> CGFloat {
+        switch anchor {
+        case .bottomRight, .bottomLeft:
+            return dy
+        case .topLeft, .topRight:
+            return -dy
+        }
+    }
+
+    private func clampedWidth(_ width: CGFloat) -> CGFloat {
+        min(max(width, minSize.width), maxSize.width)
     }
 }

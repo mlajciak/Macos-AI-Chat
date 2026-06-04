@@ -26,6 +26,7 @@ final class ChatWindowController: NSObject {
     private var savedCompactPanelSize: NSSize?
     private var isApplyingChrome = false
     private var isUserResizingCompact = false
+    private let expandedTitleBar = ExpandedTitleBarController()
 
     let viewModel = ChatViewModel()
 
@@ -52,11 +53,14 @@ final class ChatWindowController: NSObject {
         win.minSize = Self.compactMinSize
         win.maxSize = Self.compactMaxSize
 
+        viewModel.onExpandedSidebarVisibilityChanged = { [weak self] in
+            self?.syncExpandedTitleBar()
+        }
+
         window = win
         installContent()
         applyCompactChrome()
-        snapCompactToBottomRight()
-        NSApp.setActivationPolicy(.accessory)
+        snapCompactToAnchor()
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -68,9 +72,13 @@ final class ChatWindowController: NSObject {
     func setMode(_ newMode: WindowMode) {
         guard let window, newMode != mode else { return }
 
+        viewModel.closeOverlays()
+
         if newMode == .expanded {
+            savedCompactPanelSize = window.frame.size
             mode = .expanded
             compactPresentation = .panel
+            viewModel.isExpandedSidebarVisible = true
             applyExpandedChrome()
             if let saved = savedExpandedFrame {
                 window.setFrame(saved, display: true, animate: true)
@@ -83,8 +91,16 @@ final class ChatWindowController: NSObject {
             mode = .compact
             compactPresentation = .panel
             applyCompactChrome()
-            snapCompactToBottomRight(animate: true)
-            NSApp.setActivationPolicy(.accessory)
+            if let saved = savedCompactPanelSize {
+                resizeCompactWindow(
+                    to: NSSize(
+                        width: min(max(saved.width, Self.compactMinSize.width), Self.compactMaxSize.width),
+                        height: min(max(saved.height, Self.compactMinSize.height), Self.compactMaxSize.height)
+                    ),
+                    animate: true
+                )
+            }
+            snapCompactToAnchor(animate: true)
         }
 
         refreshContent()
@@ -108,7 +124,7 @@ final class ChatWindowController: NSObject {
         )
         isApplyingChrome = false
         refreshContent()
-        snapCompactToBottomRight(animate: true)
+        snapCompactToAnchor(animate: true)
     }
 
     func restoreCompactPanel() {
@@ -128,7 +144,7 @@ final class ChatWindowController: NSObject {
         )
         isApplyingChrome = false
         refreshContent()
-        snapCompactToBottomRight(animate: true)
+        snapCompactToAnchor(animate: true)
     }
 
     func hideWindow() {
@@ -164,9 +180,12 @@ final class ChatWindowController: NSObject {
             onCompactResizeStarted: { [weak self] in self?.isUserResizingCompact = true },
             onCompactResizeEnded: { [weak self] in
                 self?.isUserResizingCompact = false
-                self?.snapCompactToBottomRight()
+                self?.snapCompactToAnchor()
             },
-            onCollapseToStrip: { [weak self] in self?.collapseToStrip() }
+            onCollapseToStrip: { [weak self] in self?.collapseToStrip() },
+            onCompactAnchorChange: { [weak self] in
+                self?.snapCompactToAnchor(animate: true)
+            }
         )
     }
 
@@ -175,10 +194,13 @@ final class ChatWindowController: NSObject {
         isApplyingChrome = true
         defer { isApplyingChrome = false }
 
+        expandedTitleBar.uninstall(from: window)
+
         window.styleMask = [.borderless, .resizable, .fullSizeContentView]
         window.title = AppBranding.name
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = .none
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
@@ -191,12 +213,7 @@ final class ChatWindowController: NSObject {
         window.hasShadow = true
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        if compactPresentation == .panel {
-            var frame = window.frame
-            frame.size = Self.compactDefaultSize
-            window.setFrame(frame, display: false)
-        }
-        snapCompactToBottomRight()
+        snapCompactToAnchor()
     }
 
     private func applyCompactSizeLimits(for presentation: CompactPresentation) {
@@ -219,12 +236,9 @@ final class ChatWindowController: NSObject {
 
     private func resizeCompactWindow(to size: NSSize, animate: Bool) {
         guard let window else { return }
-        let anchorRight = window.frame.maxX
-        let anchorBottom = window.frame.minY
-        var frame = window.frame
-        frame.size = size
-        frame.origin.x = anchorRight - frame.width
-        frame.origin.y = anchorBottom
+        let anchor = viewModel.preferences.compactWindowAnchor
+        let pinned = anchor.pinnedCorner(in: window.frame)
+        let frame = anchor.frame(pinnedTo: pinned, size: size)
         window.setFrame(frame, display: true, animate: animate)
     }
 
@@ -233,18 +247,19 @@ final class ChatWindowController: NSObject {
         isApplyingChrome = true
         defer { isApplyingChrome = false }
 
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.title = AppBranding.name
-        window.titleVisibility = .visible
-        window.titlebarAppearsTransparent = false
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.title = ""
+        window.subtitle = ""
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
         window.toolbar = nil
-        window.toolbarStyle = .automatic
         window.standardWindowButton(.closeButton)?.isHidden = false
         window.standardWindowButton(.miniaturizeButton)?.isHidden = false
         window.standardWindowButton(.zoomButton)?.isHidden = false
         window.level = .normal
         window.isMovable = true
-        window.isMovableByWindowBackground = false
+        window.isMovableByWindowBackground = true
         window.minSize = Self.expandedMinSize
         window.maxSize = NSSize(width: 10_000, height: 10_000)
         window.isOpaque = true
@@ -261,17 +276,30 @@ final class ChatWindowController: NSObject {
                 )
             )
         }
+
+        syncExpandedTitleBar()
     }
 
-    /// Keeps the window's bottom-right corner pinned to the screen's bottom-right inset.
-    func snapCompactToBottomRight(animate: Bool = false) {
+    private func syncExpandedTitleBar() {
+        guard mode == .expanded, let window else { return }
+        expandedTitleBar.install(
+            on: window,
+            viewModel: viewModel,
+            onCompact: { [weak self] in self?.setMode(.compact) }
+        )
+    }
+
+    func snapCompactToAnchor(animate: Bool = false) {
         guard mode == .compact, let window else { return }
         guard let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
 
         let visible = screen.visibleFrame
-        var frame = window.frame
-        frame.origin.x = visible.maxX - frame.width - Self.screenInset
-        frame.origin.y = visible.minY + Self.screenInset
+        let anchor = viewModel.preferences.compactWindowAnchor
+        let frame = anchor.snappedFrame(
+            size: window.frame.size,
+            in: visible,
+            inset: Self.screenInset
+        )
         window.setFrame(frame, display: true, animate: animate)
     }
 
@@ -295,17 +323,19 @@ extension ChatWindowController: NSWindowDelegate {
     }
 
     func windowDidResize(_ notification: Notification) {
+        hostingView?.needsLayout = true
+        hostingView?.layoutSubtreeIfNeeded()
         guard !isApplyingChrome, !isUserResizingCompact, mode == .compact else { return }
-        snapCompactToBottomRight()
+        snapCompactToAnchor()
     }
 
     func windowDidMove(_ notification: Notification) {
         guard !isApplyingChrome, mode == .compact else { return }
-        snapCompactToBottomRight()
+        snapCompactToAnchor()
     }
 
     func windowDidChangeScreen(_ notification: Notification) {
         guard mode == .compact else { return }
-        snapCompactToBottomRight()
+        snapCompactToAnchor()
     }
 }

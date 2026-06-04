@@ -7,10 +7,6 @@ struct SettingsOverlay: View {
 
     private var fontSettings: AppFontSettings { preferences.fontSettings }
 
-    private var glassMaterial: NSVisualEffectView.Material {
-        usesHudMaterial ? .hudWindow : .popover
-    }
-
     var body: some View {
         FloatingMenuOverlay(
             title: "Settings",
@@ -19,45 +15,291 @@ struct SettingsOverlay: View {
             fontSettings: fontSettings,
             onClose: onClose
         ) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+            SettingsPanelContent(preferences: preferences, usesHudMaterial: usesHudMaterial)
+        }
+    }
+}
+
+// MARK: - Categories (expanded settings window)
+
+enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
+    case openRouter
+    case chat
+    case appearance
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .openRouter: "OpenRouter"
+        case .chat: "Chat"
+        case .appearance: "Appearance"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .openRouter: "key.fill"
+        case .chat: "bubble.left.and.bubble.right"
+        case .appearance: "paintbrush"
+        }
+    }
+}
+
+/// Expanded window: sidebar categories + detail pane (macOS Settings style).
+struct ExpandedSettingsSheet: View {
+    @Bindable var preferences: AppPreferences
+    @Environment(\.dismiss) private var dismiss
+    @State private var category: SettingsCategory = .openRouter
+
+    private var fontSettings: AppFontSettings { preferences.fontSettings }
+
+    var body: some View {
+        NavigationSplitView {
+            List(selection: $category) {
+                ForEach(SettingsCategory.allCases) { item in
+                    Label {
+                        Text(item.title)
+                            .font(fontSettings.font(for: .body))
+                    } icon: {
+                        Image(systemName: item.systemImage)
+                            .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
+                    }
+                    .tag(item)
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .navigationSplitViewColumnWidth(min: 168, ideal: 200, max: 240)
+        } detail: {
+            SettingsCategoryDetail(
+                category: category,
+                preferences: preferences,
+                usesHudMaterial: false
+            )
+            .navigationTitle(category.title)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .navigationSplitViewStyle(.balanced)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .frame(minWidth: 640, minHeight: 520)
+    }
+}
+
+struct SettingsCategoryDetail: View {
+    let category: SettingsCategory
+    @Bindable var preferences: AppPreferences
+    var usesHudMaterial: Bool = false
+
+    private var fontSettings: AppFontSettings { preferences.fontSettings }
+
+    var body: some View {
+        ScrollView {
+            Group {
+                switch category {
+                case .openRouter:
                     OpenRouterSettingsSection(
                         preferences: preferences,
                         fontSettings: fontSettings
                     )
-
-                    Divider().opacity(0.35)
-
-                    SettingsFieldRow(label: "Theme", fontSettings: fontSettings) {
-                        ThemeSettingsPicker(
-                            selection: $preferences.theme,
+                case .chat:
+                    VStack(alignment: .leading, spacing: 16) {
+                        CompactWindowSettingsSection(
+                            preferences: preferences,
                             fontSettings: fontSettings,
-                            glassMaterial: glassMaterial
+                            usesHudMaterial: usesHudMaterial
+                        )
+                        ChatTitleModelSettingsSection(
+                            preferences: preferences,
+                            fontSettings: fontSettings,
+                            usesHudMaterial: usesHudMaterial
                         )
                     }
+                case .appearance:
+                    AppearanceSettingsSection(
+                        preferences: preferences,
+                        fontSettings: fontSettings,
+                        usesHudMaterial: usesHudMaterial
+                    )
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .appScrollStyle()
+        }
+        .scrollbarsWhenNeeded()
+    }
+}
 
-                    SettingsFieldRow(label: "Font size", fontSettings: fontSettings) {
-                        FontSizeSettingsControl(
-                            pointSize: $preferences.bodyPointSize,
-                            fontSettings: fontSettings
-                        )
+/// Settings fields without overlay chrome (compact overlay: all categories).
+struct SettingsPanelContent: View {
+    @Bindable var preferences: AppPreferences
+    var usesHudMaterial: Bool = false
+
+    private var fontSettings: AppFontSettings { preferences.fontSettings }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                OpenRouterSettingsSection(
+                    preferences: preferences,
+                    fontSettings: fontSettings
+                )
+
+                Divider().opacity(0.35)
+
+                CompactWindowSettingsSection(
+                    preferences: preferences,
+                    fontSettings: fontSettings,
+                    usesHudMaterial: usesHudMaterial
+                )
+
+                Divider().opacity(0.35)
+
+                ChatTitleModelSettingsSection(
+                    preferences: preferences,
+                    fontSettings: fontSettings,
+                    usesHudMaterial: usesHudMaterial
+                )
+
+                Divider().opacity(0.35)
+
+                AppearanceSettingsSection(
+                    preferences: preferences,
+                    fontSettings: fontSettings,
+                    usesHudMaterial: usesHudMaterial
+                )
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
+            .appScrollStyle()
+        }
+        .scrollbarsWhenNeeded()
+    }
+}
+
+// MARK: - Compact window
+
+private struct CompactWindowSettingsSection: View {
+    @Bindable var preferences: AppPreferences
+    let fontSettings: AppFontSettings
+    var usesHudMaterial: Bool = false
+
+    private var glassMaterial: NSVisualEffectView.Material {
+        usesHudMaterial ? .hudWindow : .popover
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsFieldRow(label: "Screen position", fontSettings: fontSettings) {
+                Text("Where the compact chat panel sits on your display.")
+                    .font(fontSettings.font(for: .caption))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            CompactWindowAnchorPicker(
+                selection: $preferences.compactWindowAnchor,
+                fontSettings: fontSettings,
+                glassMaterial: glassMaterial
+            )
+        }
+    }
+}
+
+private struct CompactWindowAnchorPicker: View {
+    @Binding var selection: CompactWindowAnchor
+    let fontSettings: AppFontSettings
+    let glassMaterial: NSVisualEffectView.Material
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8),
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(CompactWindowAnchor.allCases) { anchor in
+                Button {
+                    selection = anchor
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: anchor.systemImage)
+                            .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
+                        Text(anchor.label)
+                            .font(fontSettings.font(for: .caption, weight: .medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     }
-
-                    SettingsFieldRow(label: "Font family", fontSettings: fontSettings) {
-                        FontFamilySettingsPicker(
-                            mode: $preferences.fontFamilyMode,
-                            customName: $preferences.customFontFamily,
-                            fontSettings: fontSettings,
-                            glassMaterial: glassMaterial
-                        )
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
+                    .background {
+                        if selection == anchor {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.accentColor.opacity(0.2))
+                        } else {
+                            GlassSurface.sessionMenu(material: glassMaterial)
+                        }
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(
+                                selection == anchor ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.1),
+                                lineWidth: selection == anchor ? 1 : 0.5
+                            )
                     }
                 }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
-                .appScrollStyle()
+                .buttonStyle(.plain)
             }
-            .scrollbarsWhenNeeded()
+        }
+    }
+}
+
+// MARK: - Appearance
+
+private struct AppearanceSettingsSection: View {
+    @Bindable var preferences: AppPreferences
+    let fontSettings: AppFontSettings
+    var usesHudMaterial: Bool = false
+
+    private var glassMaterial: NSVisualEffectView.Material {
+        usesHudMaterial ? .hudWindow : .popover
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SettingsFieldRow(label: "Theme", fontSettings: fontSettings) {
+                ThemeSettingsPicker(
+                    selection: $preferences.theme,
+                    fontSettings: fontSettings,
+                    glassMaterial: glassMaterial
+                )
+            }
+
+            SettingsFieldRow(label: "Font size", fontSettings: fontSettings) {
+                FontSizeSettingsControl(
+                    pointSize: $preferences.bodyPointSize,
+                    fontSettings: fontSettings
+                )
+            }
+
+            SettingsFieldRow(label: "Font family", fontSettings: fontSettings) {
+                FontFamilySettingsPicker(
+                    mode: $preferences.fontFamilyMode,
+                    customName: $preferences.customFontFamily,
+                    fontSettings: fontSettings,
+                    glassMaterial: glassMaterial
+                )
+            }
         }
     }
 }
@@ -338,6 +580,70 @@ private struct OpenRouterModelRow: View {
             return Color.primary.opacity(0.06)
         }
         return .clear
+    }
+}
+
+// MARK: - Chat title model
+
+private struct ChatTitleModelSettingsSection: View {
+    @Bindable var preferences: AppPreferences
+    let fontSettings: AppFontSettings
+    var usesHudMaterial: Bool = false
+
+    private var glassMaterial: NSVisualEffectView.Material {
+        usesHudMaterial ? .hudWindow : .popover
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsFieldRow(label: "Chat title generation", fontSettings: fontSettings) {
+                Text("After your first message, the app can ask OpenRouter for a short session title.")
+                    .font(fontSettings.font(for: .caption))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            SettingsFieldRow(label: "Title model", fontSettings: fontSettings) {
+                AppFontDropdown(fontSettings: fontSettings, glassMaterial: glassMaterial) {
+                    AppDropdownTriggerLabel(
+                        icon: "textformat",
+                        title: preferences.chatTitleModelSource.label,
+                        fontSettings: fontSettings
+                    )
+                } menuContent: { close in
+                    ForEach(ChatTitleModelSource.allCases) { source in
+                        AppDropdownRow(
+                            icon: source == .selectedChatModel ? "bubble.left.and.bubble.right" : "character.cursor.ibeam",
+                            title: source.label,
+                            fontSettings: fontSettings,
+                            isSelected: preferences.chatTitleModelSource == source
+                        ) {
+                            preferences.chatTitleModelSource = source
+                            close()
+                        }
+                    }
+                }
+            }
+
+            if preferences.chatTitleModelSource == .custom {
+                SettingsFieldRow(label: "Custom model ID", fontSettings: fontSettings) {
+                    TextField("openai/gpt-4o-mini", text: $preferences.chatTitleCustomModelId)
+                        .textFieldStyle(.plain)
+                        .font(fontSettings.font(for: .caption))
+                        .padding(.horizontal, AppDropdownChrome.horizontalPadding)
+                        .pillRow()
+                        .pillBackground(
+                            fill: AppDropdownChrome.fieldFill,
+                            stroke: AppDropdownChrome.fieldStroke
+                        )
+                }
+            } else {
+                Text("Uses the model selected in the chat input. If none is selected, the first message is truncated for the title.")
+                    .font(fontSettings.font(for: .caption))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 

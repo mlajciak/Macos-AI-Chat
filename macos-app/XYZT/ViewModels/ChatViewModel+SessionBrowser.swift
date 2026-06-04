@@ -6,15 +6,15 @@ extension ChatViewModel {
         ProjectCatalog.project(id: selectedProjectId)
     }
 
-    /// Projects ordered by most recently opened or touched.
+    /// User-opened folders ordered by most recently opened or touched.
     var recentProjects: [Project] {
         var seen = Set<String>()
         var ordered: [String] = []
-        for id in recentlyOpenedProjectIds {
+        for id in recentlyOpenedProjectIds where ProjectCatalog.isUserProject(id) {
             guard seen.insert(id).inserted else { continue }
             ordered.append(id)
         }
-        let byActivity = Set(threads.map(\.projectId))
+        let byActivity = Set(threads.map(\.projectId).filter { ProjectCatalog.isUserProject($0) })
         for id in byActivity.sorted(by: { projectLastActive($0) > projectLastActive($1) }) {
             guard seen.insert(id).inserted else { continue }
             ordered.append(id)
@@ -29,42 +29,54 @@ extension ChatViewModel {
     }
 
     func createNewChat() {
+        guard hasWorkspace else {
+            openProjectFolder()
+            return
+        }
         let thread = ChatThread.new(projectId: selectedProjectId)
         threads.insert(thread, at: 0)
         activeThreadId = thread.id
         recordProjectOpened(selectedProjectId)
+        persistCurrentProject()
         closeOverlays()
         draft = ""
     }
 
     func selectThread(_ threadId: String) {
         guard let thread = threads.first(where: { $0.id == threadId }) else { return }
+        if hasWorkspace, selectedProjectId != thread.projectId {
+            persistCurrentProject()
+        }
         activeThreadId = threadId
         selectedProjectId = thread.projectId
         recordProjectOpened(thread.projectId)
         touchActiveThread()
+        persistCurrentProject()
         closeOverlays()
     }
 
     func deleteThread(_ threadId: String) {
-        guard let index = threads.firstIndex(where: { $0.id == threadId }) else { return }
+        guard hasWorkspace,
+              let index = threads.firstIndex(where: { $0.id == threadId })
+        else { return }
+        let projectId = threads[index].projectId
         let wasActive = threadId == activeThreadId
         threads.remove(at: index)
-        guard threads.isEmpty else {
-            if wasActive {
-                activeThreadId = threads[0].id
-                selectedProjectId = threads[0].projectId
-            }
-            return
+        let remaining = threads(for: projectId)
+        if remaining.isEmpty {
+            let thread = ChatThread.new(projectId: projectId)
+            threads.append(thread)
+            activeThreadId = thread.id
+        } else if wasActive {
+            activeThreadId = remaining[0].id
         }
-        let thread = ChatThread.new(projectId: selectedProjectId)
-        threads = [thread]
-        activeThreadId = thread.id
+        persistCurrentProject()
     }
 
     func recordProjectOpened(_ projectId: String) {
         recentlyOpenedProjectIds.removeAll { $0 == projectId }
         recentlyOpenedProjectIds.insert(projectId, at: 0)
+        Self.saveRecentProjectIds(recentlyOpenedProjectIds)
     }
 
     func openProjectFolder() {
@@ -78,6 +90,7 @@ extension ChatViewModel {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let project = ProjectCatalog.registerUserFolder(at: url)
         selectProject(project.id)
+        persistCurrentProject()
         closeOverlays()
     }
 

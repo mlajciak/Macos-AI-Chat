@@ -5,8 +5,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let windowController = ChatWindowController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
         AppTypography.registerFonts()
         windowController.show()
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -20,7 +25,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowController.show()
     }
 
-    @objc func toggleWindowMode() {
-        windowController.toggleMode()
-    }
 }

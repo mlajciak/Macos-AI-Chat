@@ -56,11 +56,12 @@ struct FloatingMenuOverlay<Content: View>: View {
                 systemImage: "xmark",
                 tooltip: closeHelp,
                 iconPointSize: fontSettings.iconPointSize,
+                diameter: 28,
                 weight: .semibold,
                 symbolColor: .secondaryLabelColor,
                 action: onClose
             )
-            .frame(width: 28, height: 28)
+            .fixedSize(horizontal: true, vertical: true)
             .accessibilityLabel(closeHelp)
         }
         .frame(height: FloatingChromeMetrics.headerBarHeight)

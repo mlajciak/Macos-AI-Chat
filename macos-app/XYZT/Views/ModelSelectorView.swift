@@ -34,8 +34,9 @@ struct ModelSelectorView: View {
             .pillRow(height: AppChrome.compactControlHeight)
             .pillBackground(
                 height: AppChrome.compactControlHeight,
-                fill: Color.white.opacity(0.08),
-                stroke: Color.white.opacity(0.16)
+                fill: AppDropdownChrome.fieldFill,
+                stroke: AppDropdownChrome.fieldStroke,
+                lineWidth: 1
             )
         } menuContent: { close in
             if models.isEmpty {

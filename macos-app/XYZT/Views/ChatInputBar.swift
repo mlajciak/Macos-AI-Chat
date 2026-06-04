@@ -8,6 +8,7 @@ struct ChatInputBar: View {
     let fontSettings: AppFontSettings
     let isStreaming: Bool
     let onSend: () -> Void
+    let onStop: () -> Void
     var expandedMode: Bool = false
     var usesHudMaterial: Bool = false
     @FocusState private var isFocused: Bool
@@ -70,7 +71,7 @@ struct ChatInputBar: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
 
             if draft.isEmpty {
-                Text("Message \(AppBranding.name)…")
+                Text("What do you want to make?")
                     .font(fontSettings.font(for: .body))
                     .foregroundStyle(.tertiary)
                     .padding(.top, 2)
@@ -89,7 +90,11 @@ struct ChatInputBar: View {
                 isDisabled: false
             )
             Spacer(minLength: 4)
-            sendButton
+            if isStreaming {
+                stopButton
+            } else {
+                sendButton
+            }
         }
     }
 
@@ -107,8 +112,25 @@ struct ChatInputBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Send")
-        .disabled(!canSend || isStreaming)
+        .disabled(!canSend)
         .keyboardShortcut(.return, modifiers: expandedMode ? .command : [])
+    }
+
+    private var stopButton: some View {
+        Button(action: onStop) {
+            Image(systemName: "stop.fill")
+                .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .bold))
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .background {
+                    Capsule()
+                        .fill(Color.red.opacity(0.9))
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Stop")
+        .help("Stop generating")
     }
 
     private var canSend: Bool {
