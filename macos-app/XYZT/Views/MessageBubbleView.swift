@@ -10,6 +10,7 @@ enum MessageListLayout {
 struct MessageBubbleView: View {
     let message: ChatMessage
     let fontSettings: AppFontSettings
+    var onToolExpandedChange: ((String, Bool) -> Void)?
 
     private var isUser: Bool { message.role == .user }
 
@@ -20,13 +21,41 @@ struct MessageBubbleView: View {
                 UserMessageBubble(content: message.content, fontSettings: fontSettings)
             }
         } else {
-            Text(message.content)
-                .appFont(.body, settings: fontSettings)
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+            AssistantMessageView(
+                message: message,
+                fontSettings: fontSettings,
+                onToolExpandedChange: onToolExpandedChange
+            )
         }
+    }
+}
+
+private struct AssistantMessageView: View {
+    let message: ChatMessage
+    let fontSettings: AppFontSettings
+    var onToolExpandedChange: ((String, Bool) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(message.toolCards.filter { !$0.body.isEmpty }) { card in
+                ToolCardView(
+                    card: card,
+                    fontSettings: fontSettings
+                ) { expanded in
+                    onToolExpandedChange?(card.id, expanded)
+                }
+            }
+
+            if !message.content.isEmpty {
+                Text(message.content)
+                    .appFont(.body, settings: fontSettings)
+                    .foregroundStyle(.primary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

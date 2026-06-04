@@ -1,9 +1,0 @@
-{
-  "helpText": "XYZT (demo). Send a message to try canned replies. Use /help anytime. Expand the window for a regular app experience.",
-  "faqAnswers": [
-    "Demo: I do not call a model yet. Wire core-app to your agent runtime when ready.",
-    "Demo: Compact mode floats bottom-right; expand for a normal resizable window.",
-    "Demo: Shared logic lives in core-app; this macOS shell is one client surface."
-  ],
-  "echoTemplate": "Demo: you said «{text}». Real agent wiring comes later."
-}

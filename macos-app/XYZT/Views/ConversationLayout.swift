@@ -9,6 +9,7 @@ struct ConversationLayout<Header: View>: View {
     let isStreaming: Bool
     let expandedMode: Bool
     let onSend: () -> Void
+    var onToolExpandedChange: ((String, String, Bool) -> Void)?
     var usesHudMaterial: Bool = false
     @Environment(\.appFontSettings) private var fontSettings
     @ViewBuilder var header: () -> Header
@@ -30,6 +31,7 @@ struct ConversationLayout<Header: View>: View {
             MessageListView(
                 messages: messages,
                 isStreaming: isStreaming,
+                onToolExpandedChange: onToolExpandedChange,
                 topInset: FloatingChromeMetrics.headerScrollInset(expanded: expandedMode),
                 bottomInset: FloatingChromeMetrics.inputOverlayHeight,
                 contentMaxWidth: expandedContentMaxWidth
@@ -87,6 +89,7 @@ extension ConversationLayout where Header == EmptyView {
         isStreaming: Bool,
         expandedMode: Bool,
         onSend: @escaping () -> Void,
+        onToolExpandedChange: ((String, String, Bool) -> Void)? = nil,
         usesHudMaterial: Bool = false
     ) {
         self._draft = draft
@@ -96,6 +99,7 @@ extension ConversationLayout where Header == EmptyView {
         self.isStreaming = isStreaming
         self.expandedMode = expandedMode
         self.onSend = onSend
+        self.onToolExpandedChange = onToolExpandedChange
         self.usesHudMaterial = usesHudMaterial
         self.header = { EmptyView() }
     }

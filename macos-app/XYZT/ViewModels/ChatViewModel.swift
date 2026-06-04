@@ -87,7 +87,10 @@ final class ChatViewModel {
         let apiKey = preferences.openRouterApiKey
         Task {
             let replyAt = Date().timeIntervalSince1970
-            let content: String
+            let assistantId = UUID().uuidString
+            var startedMessage = false
+            var pendingThinkingCard: AgentToolCard?
+
             do {
                 guard preferences.hasOpenRouterApiKey else {
                     throw OpenRouterClient.ClientError.missingApiKey
@@ -98,22 +101,76 @@ final class ChatViewModel {
                         message: "Choose at least one model in Settings."
                     )
                 }
-                content = try await ChatAgent.reply(
+                try await ChatAgent.streamReply(
                     messages: snapshot,
                     modelId: modelId,
                     apiKey: apiKey
-                )
+                ) { event in
+                    switch event {
+                    case let .thinkingStart(card):
+                        pendingThinkingCard = card
+                    case let .thinkingDelta(cardId, delta):
+                        if !startedMessage {
+                            self.mutateActiveThread { thread in
+                                thread.session.reduce(.startAssistantMessage(id: assistantId, createdAt: replyAt))
+                            }
+                            startedMessage = true
+                        }
+                        self.mutateActiveThread { thread in
+                            if let pending = pendingThinkingCard {
+                                thread.session.reduce(.startToolCard(messageId: assistantId, card: pending))
+                                pendingThinkingCard = nil
+                            }
+                            thread.session.reduce(.appendToolBody(
+                                messageId: assistantId,
+                                toolId: cardId,
+                                delta: delta
+                            ))
+                        }
+                    case .thinkingEnd:
+                        pendingThinkingCard = nil
+                    case let .textDelta(delta):
+                        pendingThinkingCard = nil
+                        if !startedMessage {
+                            self.mutateActiveThread { thread in
+                                thread.session.reduce(.startAssistantMessage(id: assistantId, createdAt: replyAt))
+                            }
+                            startedMessage = true
+                        }
+                        self.mutateActiveThread { thread in
+                            thread.session.reduce(.appendAssistantText(id: assistantId, delta: delta))
+                        }
+                    }
+                }
             } catch {
-                content = error.localizedDescription
+                self.mutateActiveThread { thread in
+                    if startedMessage {
+                        thread.session.reduce(.appendAssistantText(
+                            id: assistantId,
+                            delta: error.localizedDescription
+                        ))
+                    } else {
+                        thread.session.reduce(.appendAssistant(
+                            content: error.localizedDescription,
+                            id: assistantId,
+                            createdAt: replyAt
+                        ))
+                    }
+                }
             }
-            mutateActiveThread { thread in
-                thread.session.reduce(.appendAssistant(
-                    content: content,
-                    id: UUID().uuidString,
-                    createdAt: replyAt
-                ))
+            self.mutateActiveThread { thread in
                 thread.session.reduce(.completeAssistantReply)
             }
+        }
+    }
+
+    func setToolExpanded(messageId: String, toolId: String, isExpanded: Bool) {
+        mutateActiveThread { thread in
+            thread.session.reduce(.setToolExpanded(
+                messageId: messageId,
+                toolId: toolId,
+                isExpanded: isExpanded
+            ))
         }
     }
 

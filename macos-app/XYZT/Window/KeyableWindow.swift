@@ -13,5 +13,6 @@ final class KeyableWindow: NSWindow {
     ) {
         super.init(contentRect: contentRect, styleMask: style, backing: backingStoreType, defer: flag)
         acceptsMouseMovedEvents = true
+        allowsToolTipsWhenApplicationIsInactive = true
     }
 }

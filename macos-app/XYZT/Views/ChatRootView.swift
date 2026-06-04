@@ -108,6 +108,9 @@ struct ChatRootView: View {
             isStreaming: viewModel.session.isStreaming,
             expandedMode: false,
             onSend: { viewModel.send() },
+            onToolExpandedChange: { messageId, toolId, expanded in
+                viewModel.setToolExpanded(messageId: messageId, toolId: toolId, isExpanded: expanded)
+            },
             usesHudMaterial: true
         ) {
             CompactHeaderView(
@@ -156,6 +159,9 @@ struct ChatRootView: View {
             isStreaming: viewModel.session.isStreaming,
             expandedMode: true,
             onSend: { viewModel.send() },
+            onToolExpandedChange: { messageId, toolId, expanded in
+                viewModel.setToolExpanded(messageId: messageId, toolId: toolId, isExpanded: expanded)
+            },
             usesHudMaterial: false
         ) {
             ExpandedFloatingHeaderView(

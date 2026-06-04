@@ -44,7 +44,7 @@ struct AppFontDropdown<Label: View, MenuContent: View>: View {
         .frame(maxWidth: fullWidth ? .infinity : nil, alignment: .leading)
 
         if let tooltip, !tooltip.isEmpty {
-            button.macTooltip(tooltip)
+            button.help(tooltip)
         } else {
             button
         }

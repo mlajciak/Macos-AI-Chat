@@ -132,7 +132,7 @@ enum OpenRouterClient {
         }
     }
 
-    private static func parseErrorMessage(data: Data) -> String? {
+    static func parseErrorMessage(data: Data) -> String? {
         struct ErrorBody: Decodable {
             struct Detail: Decodable {
                 let message: String?

@@ -3,40 +3,46 @@ import SwiftUI
 struct MessageListView: View {
     let messages: [ChatMessage]
     let isStreaming: Bool
+    var onToolExpandedChange: ((String, String, Bool) -> Void)?
     var topInset: CGFloat = 0
     var bottomInset: CGFloat = 0
     /// When set, message column is capped and centered (expanded window).
     var contentMaxWidth: CGFloat?
     @Environment(\.appFontSettings) private var fontSettings
 
+    private var scrollAnchorId: String {
+        if let last = messages.last, last.role == .assistant, last.hasVisibleContent {
+            return last.id
+        }
+        return "scroll-end"
+    }
+
+    private var scrollContentToken: String {
+        guard let last = messages.last else { return "" }
+        let toolChars = last.toolCards.reduce(0) { $0 + $1.body.count }
+        return "\(last.id)|\(last.content.count)|\(toolChars)|\(last.toolCards.count)"
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     if messages.isEmpty {
-                        Text("Ask anything (demo mode)")
+                        Text("Ask anything…")
                             .appFont(.body, settings: fontSettings)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                     } else {
                         ForEach(messages) { message in
-                            MessageBubbleView(message: message, fontSettings: fontSettings)
-                                .id(message.id)
+                            MessageBubbleView(
+                                message: message,
+                                fontSettings: fontSettings,
+                                onToolExpandedChange: { toolId, expanded in
+                                    onToolExpandedChange?(message.id, toolId, expanded)
+                                }
+                            )
+                            .id(message.id)
                         }
-                    }
-
-                    if isStreaming {
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Thinking…")
-                                .appFont(.caption, settings: fontSettings)
-                                .foregroundStyle(.secondary)
-                            Spacer(minLength: 0)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 6)
-                        .id("streaming-indicator")
                     }
 
                     Color.clear
@@ -55,6 +61,7 @@ struct MessageListView: View {
             .contentMargins(.bottom, bottomInset, for: .scrollIndicators)
             .appVerticalScrollIndicators()
             .onChange(of: messages.count) { _, _ in scrollToBottom(proxy) }
+            .onChange(of: scrollContentToken) { _, _ in scrollToBottom(proxy) }
             .onChange(of: isStreaming) { _, streaming in
                 if streaming { scrollToBottom(proxy) }
             }
@@ -62,11 +69,10 @@ struct MessageListView: View {
     }
 
     private func scrollToBottom(_ proxy: ScrollViewProxy) {
-        let target = isStreaming ? "streaming-indicator" : "scroll-end"
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            proxy.scrollTo(target, anchor: .bottom)
+            proxy.scrollTo(scrollAnchorId, anchor: .bottom)
         }
     }
 }
