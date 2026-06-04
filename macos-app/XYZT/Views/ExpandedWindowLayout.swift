@@ -1,77 +1,63 @@
 import SwiftUI
 
+/// Expanded window uses the same in-window chrome as compact (floating header + modal settings).
 struct ExpandedWindowLayout: View {
     @Bindable var viewModel: ChatViewModel
     let onCompact: () -> Void
 
-    var body: some View {
-        Group {
-            if viewModel.isExpandedSidebarVisible {
-                HSplitView {
-                    ExpandedSidebarColumn(viewModel: viewModel)
-                        .frame(
-                            minWidth: FloatingChromeMetrics.sidebarMinWidth,
-                            idealWidth: FloatingChromeMetrics.sidebarIdealWidth,
-                            maxWidth: FloatingChromeMetrics.sidebarMaxWidth
-                        )
-                    expandedDetailColumn
-                }
-            } else {
-                expandedDetailColumn
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .sheet(isPresented: $viewModel.isSettingsOpen) {
-            ExpandedSettingsSheet(preferences: viewModel.preferences)
-        }
-        .onAppear {
-            viewModel.closeOverlays()
-        }
-        .onChange(of: viewModel.isExpandedSidebarVisible) { _, _ in
-            viewModel.onExpandedSidebarVisibilityChanged?()
-        }
+    private var chromeBlurMaterial: NSVisualEffectView.Material {
+        FloatingChromeMetrics.chromeBlurMaterial(usesHudWindow: true)
     }
 
-    private var expandedDetailColumn: some View {
-        VStack(spacing: 0) {
-            ExpandedDetailToolbar(
-                viewModel: viewModel,
-                onCompact: onCompact
-            )
-
-            Group {
-                if viewModel.hasWorkspace {
-                    ConversationLayout(
-                        draft: $viewModel.draft,
-                        selectedModelId: $viewModel.selectedModelId,
-                        menuModels: viewModel.menuModels,
-                        messages: viewModel.session.messages,
-                        isStreaming: viewModel.session.isStreaming,
-                        expandedMode: true,
-                        onSend: { viewModel.send() },
-                        onStop: { viewModel.stopGeneration() },
-                        onToolExpandedChange: { messageId, toolId, expanded in
-                            viewModel.setToolExpanded(
-                                messageId: messageId,
-                                toolId: toolId,
-                                isExpanded: expanded
-                            )
-                        },
-                        usesHudMaterial: false,
-                        usesExternalTitleBar: true
-                    ) {
-                        EmptyView()
-                    }
-                } else {
+    var body: some View {
+        Group {
+            if viewModel.hasWorkspace {
+                ConversationLayout(
+                    draft: $viewModel.draft,
+                    selectedModelId: $viewModel.selectedModelId,
+                    menuModels: viewModel.menuModels,
+                    messages: viewModel.session.messages,
+                    isStreaming: viewModel.session.isStreaming,
+                    expandedMode: true,
+                    onSend: { viewModel.send() },
+                    onStop: { viewModel.stopGeneration() },
+                    onToolExpandedChange: { messageId, toolId, expanded in
+                        viewModel.setToolExpanded(
+                            messageId: messageId,
+                            toolId: toolId,
+                            isExpanded: expanded
+                        )
+                    },
+                    usesHudMaterial: true
+                ) {
+                    ChatPanelHeaderView(
+                        viewModel: viewModel,
+                        windowAction: .compact(action: onCompact),
+                        trafficLightsLeadingInset: FloatingChromeMetrics.expandedTrafficLightsLeadingWidth
+                    )
+                }
+            } else {
+                ZStack(alignment: .top) {
                     OpenFolderGateView(
                         fontSettings: viewModel.preferences.fontSettings,
                         onOpenFolder: { viewModel.openProjectFolder() }
                     )
+                    FloatingHeaderChrome(
+                        expanded: true,
+                        chromeBlurMaterial: chromeBlurMaterial
+                    ) {
+                        ChatPanelHeaderView(
+                            viewModel: viewModel,
+                            windowAction: .compact(action: onCompact),
+                            trafficLightsLeadingInset: FloatingChromeMetrics.expandedTrafficLightsLeadingWidth
+                        )
+                    }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            viewModel.closeOverlays()
+        }
     }
 }

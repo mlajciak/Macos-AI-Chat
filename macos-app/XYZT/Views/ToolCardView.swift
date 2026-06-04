@@ -5,6 +5,7 @@ struct ToolCardView: View {
     let fontSettings: AppFontSettings
     var isStreaming = false
     let onExpandedChange: (Bool) -> Void
+    @Environment(\.appThemeColors) private var theme
 
     private var showsBody: Bool {
         card.isExpanded || isStreaming
@@ -61,11 +62,11 @@ struct ToolCardView: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.primary.opacity(0.05))
+                .fill(theme.subtleFill)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
+                .strokeBorder(theme.fieldStroke, lineWidth: 0.5)
         }
         .animation(.easeInOut(duration: 0.2), value: card.isExpanded)
     }

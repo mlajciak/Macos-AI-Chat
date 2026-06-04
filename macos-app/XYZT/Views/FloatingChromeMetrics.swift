@@ -10,21 +10,20 @@ enum FloatingChromeMetrics {
     /// Reading-width column for expanded window (messages, input, header content).
     static let expandedContentMaxWidth: CGFloat = 720
 
+    static let headerHorizontalPadding: CGFloat = 12
     static let headerTopPadding: CGFloat = 10
     static let headerBottomPadding: CGFloat = 6
     static let headerBarHeight: CGFloat = 36
     /// Single-line collapsed compact bar (chevron + title + window actions).
     static let compactStripHeight: CGFloat = 40
     static let expandedTrafficLightInset: CGFloat = 28
-    /// Leading inset in the sidebar column for controls beside traffic lights.
-    static let expandedTrafficLightsLeadingWidth: CGFloat = 76
-    /// Title bar accessory sits after traffic lights; only a small gap is needed.
-    static let expandedTitleBarAccessoryLeadingInset: CGFloat = 6
+    /// Leading band reserved for traffic lights (sidebar + collapsed detail).
+    static let expandedTrafficLightsLeadingWidth: CGFloat = 78
     /// Fallback when SwiftUI safe-area top is not yet measured.
     static let expandedWindowTitlebarFallback: CGFloat = 28
     static let expandedSidebarToolbarBandHeight: CGFloat = 32
 
-    static var expandedDetailToolbarHeight: CGFloat {
+    static var expandedSidebarHeaderHeight: CGFloat {
         expandedWindowTitlebarFallback + expandedSidebarToolbarBandHeight
     }
 
@@ -54,7 +53,7 @@ enum FloatingChromeMetrics {
 
     static func headerScrollInset(expanded: Bool, externalTitleBar: Bool = false) -> CGFloat {
         if expanded && externalTitleBar {
-            return expandedDetailToolbarHeight + headerBottomPadding + chromeContentGap
+            return headerBottomPadding + chromeContentGap
         }
         return headerOverlayHeight(expanded: expanded)
     }

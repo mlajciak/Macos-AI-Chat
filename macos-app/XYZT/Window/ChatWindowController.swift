@@ -26,8 +26,6 @@ final class ChatWindowController: NSObject {
     private var savedCompactPanelSize: NSSize?
     private var isApplyingChrome = false
     private var isUserResizingCompact = false
-    private let expandedTitleBar = ExpandedTitleBarController()
-
     let viewModel = ChatViewModel()
 
     var isCompactStrip: Bool {
@@ -53,10 +51,6 @@ final class ChatWindowController: NSObject {
         win.minSize = Self.compactMinSize
         win.maxSize = Self.compactMaxSize
 
-        viewModel.onExpandedSidebarVisibilityChanged = { [weak self] in
-            self?.syncExpandedTitleBar()
-        }
-
         window = win
         installContent()
         applyCompactChrome()
@@ -78,7 +72,6 @@ final class ChatWindowController: NSObject {
             savedCompactPanelSize = window.frame.size
             mode = .expanded
             compactPresentation = .panel
-            viewModel.isExpandedSidebarVisible = true
             applyExpandedChrome()
             if let saved = savedExpandedFrame {
                 window.setFrame(saved, display: true, animate: true)
@@ -180,7 +173,7 @@ final class ChatWindowController: NSObject {
             onCompactResizeStarted: { [weak self] in self?.isUserResizingCompact = true },
             onCompactResizeEnded: { [weak self] in
                 self?.isUserResizingCompact = false
-                self?.snapCompactToAnchor()
+                self?.finishCompactGeometryChange()
             },
             onCollapseToStrip: { [weak self] in self?.collapseToStrip() },
             onCompactAnchorChange: { [weak self] in
@@ -193,8 +186,6 @@ final class ChatWindowController: NSObject {
         guard let window else { return }
         isApplyingChrome = true
         defer { isApplyingChrome = false }
-
-        expandedTitleBar.uninstall(from: window)
 
         window.styleMask = [.borderless, .resizable, .fullSizeContentView]
         window.title = AppBranding.name
@@ -237,8 +228,15 @@ final class ChatWindowController: NSObject {
     private func resizeCompactWindow(to size: NSSize, animate: Bool) {
         guard let window else { return }
         let anchor = viewModel.preferences.compactWindowAnchor
-        let pinned = anchor.pinnedCorner(in: window.frame)
-        let frame = anchor.frame(pinnedTo: pinned, size: size)
+        let frame: NSRect
+        if anchor == .floating {
+            var next = window.frame
+            next.size = size
+            frame = clampedCompactFrame(next)
+        } else {
+            let pinned = anchor.pinnedCorner(in: window.frame)
+            frame = anchor.frame(pinnedTo: pinned, size: size)
+        }
         window.setFrame(frame, display: true, animate: animate)
     }
 
@@ -259,7 +257,7 @@ final class ChatWindowController: NSObject {
         window.standardWindowButton(.zoomButton)?.isHidden = false
         window.level = .normal
         window.isMovable = true
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.minSize = Self.expandedMinSize
         window.maxSize = NSSize(width: 10_000, height: 10_000)
         window.isOpaque = true
@@ -277,26 +275,61 @@ final class ChatWindowController: NSObject {
             )
         }
 
-        syncExpandedTitleBar()
-    }
-
-    private func syncExpandedTitleBar() {
-        guard mode == .expanded, let window else { return }
-        expandedTitleBar.install(on: window, viewModel: viewModel)
     }
 
     func snapCompactToAnchor(animate: Bool = false) {
         guard mode == .compact, let window else { return }
         guard let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
 
-        let visible = screen.visibleFrame
         let anchor = viewModel.preferences.compactWindowAnchor
-        let frame = anchor.snappedFrame(
-            size: window.frame.size,
-            in: visible,
+        let visible = screen.visibleFrame
+        let frame: NSRect
+
+        if anchor == .floating {
+            if let saved = viewModel.preferences.compactFloatingWindowOrigin {
+                var restored = NSRect(origin: saved, size: window.frame.size)
+                restored = anchor.clampedFrame(restored, in: visible, inset: Self.screenInset)
+                frame = restored
+            } else {
+                frame = anchor.clampedFrame(window.frame, in: visible, inset: Self.screenInset)
+            }
+            persistFloatingCompactOrigin(from: frame)
+        } else {
+            frame = anchor.snappedFrame(
+                size: window.frame.size,
+                in: visible,
+                inset: Self.screenInset
+            )
+        }
+
+        window.setFrame(frame, display: true, animate: animate)
+    }
+
+    func finishCompactGeometryChange() {
+        guard mode == .compact else { return }
+        if viewModel.preferences.compactWindowAnchor == .floating {
+            guard let window else { return }
+            let frame = clampedCompactFrame(window.frame)
+            window.setFrame(frame, display: true, animate: false)
+            persistFloatingCompactOrigin(from: frame)
+        } else {
+            snapCompactToAnchor()
+        }
+    }
+
+    private func clampedCompactFrame(_ frame: NSRect) -> NSRect {
+        guard let window else { return frame }
+        guard let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return frame }
+        return viewModel.preferences.compactWindowAnchor.clampedFrame(
+            frame,
+            in: screen.visibleFrame,
             inset: Self.screenInset
         )
-        window.setFrame(frame, display: true, animate: animate)
+    }
+
+    private func persistFloatingCompactOrigin(from frame: NSRect) {
+        guard viewModel.preferences.compactWindowAnchor == .floating else { return }
+        viewModel.preferences.compactFloatingWindowOrigin = frame.origin
     }
 
     private func centerExpanded(_ window: NSWindow) {
@@ -322,16 +355,16 @@ extension ChatWindowController: NSWindowDelegate {
         hostingView?.needsLayout = true
         hostingView?.layoutSubtreeIfNeeded()
         guard !isApplyingChrome, !isUserResizingCompact, mode == .compact else { return }
-        snapCompactToAnchor()
+        finishCompactGeometryChange()
     }
 
     func windowDidMove(_ notification: Notification) {
         guard !isApplyingChrome, mode == .compact else { return }
-        snapCompactToAnchor()
+        finishCompactGeometryChange()
     }
 
     func windowDidChangeScreen(_ notification: Notification) {
         guard mode == .compact else { return }
-        snapCompactToAnchor()
+        finishCompactGeometryChange()
     }
 }

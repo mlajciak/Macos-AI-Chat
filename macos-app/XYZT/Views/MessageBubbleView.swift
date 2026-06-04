@@ -66,6 +66,7 @@ private struct AssistantMessageView: View {
 private struct UserMessageBubble: View {
     let content: String
     let fontSettings: AppFontSettings
+    @Environment(\.appThemeColors) private var theme
     @State private var isExpanded = false
     @State private var measuredTextHeight: CGFloat = 0
 
@@ -120,7 +121,7 @@ private struct UserMessageBubble: View {
         }
         .background {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.accentColor)
+                .fill(theme.accent)
         }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
@@ -167,7 +168,7 @@ private struct UserMessageBubble: View {
                 .padding(.vertical, 4)
                 .background {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.96))
+                        .fill(theme.accent.opacity(0.96))
                         .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
                 }
         }

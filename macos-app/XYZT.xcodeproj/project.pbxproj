@@ -57,12 +57,10 @@
 		B1000062 /* ChatViewModel+Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000062 /* ChatViewModel+Workspace.swift */; };
 		B1000063 /* OpenFolderGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000063 /* OpenFolderGateView.swift */; };
 		B1000064 /* ExpandedWindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000064 /* ExpandedWindowLayout.swift */; };
-		B1000065 /* SessionSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000065 /* SessionSidebarView.swift */; };
-		B1000066 /* ExpandedTitleBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000066 /* ExpandedTitleBarController.swift */; };
 		B1000067 /* MessageMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000067 /* MessageMarkdownParser.swift */; };
-		B1000068 /* ExpandedSidebarColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000068 /* ExpandedSidebarColumn.swift */; };
-		B1000071 /* ExpandedDetailToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000071 /* ExpandedDetailToolbar.swift */; };
+		B1000074 /* AppAccentPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000074 /* AppAccentPalette.swift */; };
 		B1000070 /* CompactWindowAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000070 /* CompactWindowAnchor.swift */; };
+		B1000075 /* CompactWindowHeaderDrag.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000075 /* CompactWindowHeaderDrag.swift */; };
 		B1000019 /* ModelSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000019 /* ModelSelectorView.swift */; };
 		B1000023 /* GlassSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000023 /* GlassSurface.swift */; };
 		B1000024 /* FloatingHeaderChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000024 /* FloatingHeaderChrome.swift */; };
@@ -145,13 +143,11 @@
 		F1000062 /* ChatViewModel+Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatViewModel+Workspace.swift"; sourceTree = "<group>"; };
 		F1000063 /* OpenFolderGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenFolderGateView.swift; sourceTree = "<group>"; };
 		F1000064 /* ExpandedWindowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedWindowLayout.swift; sourceTree = "<group>"; };
-		F1000065 /* SessionSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSidebarView.swift; sourceTree = "<group>"; };
-		F1000066 /* ExpandedTitleBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedTitleBarController.swift; sourceTree = "<group>"; };
 		F1000067 /* MessageMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownParser.swift; sourceTree = "<group>"; };
-		F1000068 /* ExpandedSidebarColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedSidebarColumn.swift; sourceTree = "<group>"; };
-		F1000071 /* ExpandedDetailToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedDetailToolbar.swift; sourceTree = "<group>"; };
+		F1000074 /* AppAccentPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAccentPalette.swift; sourceTree = "<group>"; };
 		F1000069 /* MessageMarkdownParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownParserTests.swift; sourceTree = "<group>"; };
 		F1000070 /* CompactWindowAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactWindowAnchor.swift; sourceTree = "<group>"; };
+		F1000075 /* CompactWindowHeaderDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactWindowHeaderDrag.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -226,6 +222,7 @@
 				F1000026 /* Project.swift */,
 				F1000027 /* ChatThread.swift */,
 				F1000038 /* AppPreferences.swift */,
+				F1000074 /* AppAccentPalette.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -286,9 +283,6 @@
 				F1000059 /* MessageMarkdown.swift */,
 				F1000060 /* JumpToBottomButton.swift */,
 				F1000064 /* ExpandedWindowLayout.swift */,
-				F1000068 /* ExpandedSidebarColumn.swift */,
-				F1000071 /* ExpandedDetailToolbar.swift */,
-				F1000065 /* SessionSidebarView.swift */,
 				F1000067 /* MessageMarkdownParser.swift */,
 			);
 			path = Views;
@@ -299,8 +293,8 @@
 			children = (
 				F1000005 /* WindowMode.swift */,
 				F1000006 /* ChatWindowController.swift */,
-				F1000066 /* ExpandedTitleBarController.swift */,
 				F1000070 /* CompactWindowAnchor.swift */,
+				F1000075 /* CompactWindowHeaderDrag.swift */,
 				F1000022 /* KeyableWindow.swift */,
 				F1000034 /* CompactWindowResizeHandles.swift */,
 			);
@@ -441,7 +435,6 @@
 				B1000004 /* ChatSession.swift in Sources */,
 				B1000005 /* WindowMode.swift in Sources */,
 				B1000006 /* ChatWindowController.swift in Sources */,
-				B1000066 /* ExpandedTitleBarController.swift in Sources */,
 				B1000022 /* KeyableWindow.swift in Sources */,
 				B1000007 /* ChatAgent.swift in Sources */,
 				B1000050 /* OpenRouterClient.swift in Sources */,
@@ -469,6 +462,7 @@
 				B1000036 /* ChatViewModel+SessionBrowser.swift in Sources */,
 				B1000037 /* HeaderToolbarActions.swift in Sources */,
 				B1000038 /* AppPreferences.swift in Sources */,
+				B1000074 /* AppAccentPalette.swift in Sources */,
 				B1000039 /* FloatingMenuOverlay.swift in Sources */,
 				B1000040 /* SettingsOverlay.swift in Sources */,
 				B1000041 /* ChatViewModel+Overlays.swift in Sources */,
@@ -489,10 +483,8 @@
 				B1000062 /* ChatViewModel+Workspace.swift in Sources */,
 				B1000063 /* OpenFolderGateView.swift in Sources */,
 				B1000064 /* ExpandedWindowLayout.swift in Sources */,
-				B1000068 /* ExpandedSidebarColumn.swift in Sources */,
-				B1000071 /* ExpandedDetailToolbar.swift in Sources */,
 				B1000070 /* CompactWindowAnchor.swift in Sources */,
-				B1000065 /* SessionSidebarView.swift in Sources */,
+				B1000075 /* CompactWindowHeaderDrag.swift in Sources */,
 				B1000067 /* MessageMarkdownParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

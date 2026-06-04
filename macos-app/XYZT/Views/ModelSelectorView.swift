@@ -6,6 +6,7 @@ struct ModelSelectorView: View {
     let fontSettings: AppFontSettings
     let glassMaterial: NSVisualEffectView.Material
     let isDisabled: Bool
+    @Environment(\.appThemeColors) private var theme
 
     private var selected: ChatModel? {
         models.first { $0.id == selectedModelId }
@@ -34,8 +35,8 @@ struct ModelSelectorView: View {
             .pillRow(height: AppChrome.compactControlHeight)
             .pillBackground(
                 height: AppChrome.compactControlHeight,
-                fill: AppDropdownChrome.fieldFill,
-                stroke: AppDropdownChrome.fieldStroke,
+                fill: theme.fieldFill,
+                stroke: theme.fieldStroke,
                 lineWidth: 1
             )
         } menuContent: { close in

@@ -7,6 +7,7 @@ struct MessageMarkdownView: View {
     let markdown: String
     let fontSettings: AppFontSettings
     var secondary = false
+    @Environment(\.appThemeColors) private var theme
 
     private var blocks: [MessageMarkdownBlock] {
         MessageMarkdownParser.parse(markdown)
@@ -15,7 +16,14 @@ struct MessageMarkdownView: View {
     var body: some View {
         Group {
             if blocks.isEmpty, !markdown.isEmpty {
-                MessageMarkdown.inlineText(markdown, fontSettings: fontSettings, secondary: secondary)
+                MessageMarkdown.inlineText(
+                    markdown,
+                    fontSettings: fontSettings,
+                    secondary: secondary,
+                    linkColor: linkColor,
+                    codeBackground: inlineCodeBackground,
+                    textColor: inlineTextColor
+                )
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
@@ -25,20 +33,40 @@ struct MessageMarkdownView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .tint(.accentColor)
+        .tint(theme.accent)
+    }
+
+    private var linkColor: NSColor { NSColor(theme.accent) }
+    private var inlineCodeBackground: NSColor { NSColor(theme.neutral(0.14)) }
+    private var inlineTextColor: NSColor {
+        NSColor(secondary ? theme.secondary : theme.primaryText)
     }
 
     @ViewBuilder
     private func blockView(_ block: MessageMarkdownBlock) -> some View {
         switch block {
         case let .heading(level, text):
-            MessageMarkdown.inlineText(text, fontSettings: fontSettings, secondary: secondary)
+            MessageMarkdown.inlineText(
+                text,
+                fontSettings: fontSettings,
+                secondary: secondary,
+                linkColor: linkColor,
+                codeBackground: inlineCodeBackground,
+                textColor: inlineTextColor
+            )
                 .font(MessageMarkdown.headingFont(level: level, fontSettings: fontSettings))
                 .fontWeight(level <= 2 ? .bold : .semibold)
-                .foregroundStyle(secondary ? Color.secondary : Color.primary)
+                .foregroundStyle(secondary ? theme.secondary : theme.primaryText)
 
         case let .paragraph(text):
-            MessageMarkdown.inlineText(text, fontSettings: fontSettings, secondary: secondary)
+            MessageMarkdown.inlineText(
+                text,
+                fontSettings: fontSettings,
+                secondary: secondary,
+                linkColor: linkColor,
+                codeBackground: inlineCodeBackground,
+                textColor: inlineTextColor
+            )
 
         case let .bulletList(items):
             VStack(alignment: .leading, spacing: 6) {
@@ -47,7 +75,10 @@ struct MessageMarkdownView: View {
                         marker: "•",
                         text: item,
                         fontSettings: fontSettings,
-                        secondary: secondary
+                        secondary: secondary,
+                        linkColor: linkColor,
+                        codeBackground: inlineCodeBackground,
+                        textColor: inlineTextColor
                     )
                 }
             }
@@ -59,7 +90,10 @@ struct MessageMarkdownView: View {
                         marker: "\(index + 1).",
                         text: item,
                         fontSettings: fontSettings,
-                        secondary: secondary
+                        secondary: secondary,
+                        linkColor: linkColor,
+                        codeBackground: inlineCodeBackground,
+                        textColor: inlineTextColor
                     )
                 }
             }
@@ -67,18 +101,18 @@ struct MessageMarkdownView: View {
         case let .codeBlock(_, code):
             Text(code.trimmingCharacters(in: .newlines))
                 .font(MessageMarkdown.codeFont(fontSettings))
-                .foregroundStyle(secondary ? Color.secondary : Color.primary)
+                .foregroundStyle(secondary ? theme.secondary : theme.primaryText)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.primary.opacity(secondary ? 0.05 : 0.07))
+                        .fill(secondary ? theme.codeBlockFillSecondary : theme.codeBlockFill)
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
+                        .strokeBorder(theme.fieldStroke, lineWidth: 0.5)
                 }
         }
     }
@@ -88,23 +122,43 @@ enum MessageMarkdown {
     static func inlineText(
         _ markdown: String,
         fontSettings: AppFontSettings,
-        secondary: Bool = false
+        secondary: Bool = false,
+        linkColor: NSColor = .controlAccentColor,
+        codeBackground: NSColor = .secondaryLabelColor.withAlphaComponent(0.14),
+        textColor: NSColor = .labelColor
     ) -> Text {
-        Text(attributedString(from: markdown, fontSettings: fontSettings, secondary: secondary))
+        Text(attributedString(
+            from: markdown,
+            fontSettings: fontSettings,
+            secondary: secondary,
+            linkColor: linkColor,
+            codeBackground: codeBackground,
+            textColor: textColor
+        ))
     }
 
     static func listRow(
         marker: String,
         text: String,
         fontSettings: AppFontSettings,
-        secondary: Bool
+        secondary: Bool,
+        linkColor: NSColor = .controlAccentColor,
+        codeBackground: NSColor = .secondaryLabelColor.withAlphaComponent(0.14),
+        textColor: NSColor = .labelColor
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(marker)
                 .font(fontSettings.font(for: .body, weight: .medium))
                 .foregroundStyle(.secondary)
                 .frame(minWidth: marker.count > 1 ? 20 : 12, alignment: .trailing)
-            inlineText(text, fontSettings: fontSettings, secondary: secondary)
+            inlineText(
+                text,
+                fontSettings: fontSettings,
+                secondary: secondary,
+                linkColor: linkColor,
+                codeBackground: codeBackground,
+                textColor: textColor
+            )
         }
     }
 
@@ -128,7 +182,10 @@ enum MessageMarkdown {
     static func attributedString(
         from markdown: String,
         fontSettings: AppFontSettings,
-        secondary: Bool = false
+        secondary: Bool = false,
+        linkColor: NSColor = .controlAccentColor,
+        codeBackground: NSColor = .secondaryLabelColor.withAlphaComponent(0.14),
+        textColor: NSColor = .labelColor
     ) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(
             interpretedSyntax: .inlineOnlyPreservingWhitespace
@@ -141,21 +198,26 @@ enum MessageMarkdown {
             }
             return plain
         }
-        applyInlineTypography(to: &rendered, fontSettings: fontSettings, secondary: secondary)
+        applyInlineTypography(
+            to: &rendered,
+            fontSettings: fontSettings,
+            linkColor: linkColor,
+            codeBackground: codeBackground,
+            textColor: textColor
+        )
         return rendered
     }
 
     private static func applyInlineTypography(
         to rendered: inout AttributedString,
         fontSettings: AppFontSettings,
-        secondary: Bool
+        linkColor: NSColor,
+        codeBackground: NSColor,
+        textColor: NSColor
     ) {
         let body = fontSettings.nsFont(for: .body)
         let bold = fontSettings.nsFont(for: .body, weight: .semibold)
         let code = monoNSFont(fontSettings)
-        let codeBackground = NSColor.secondaryLabelColor.withAlphaComponent(0.14)
-        let textColor = secondary ? NSColor.secondaryLabelColor : NSColor.labelColor
-        let linkColor = NSColor.controlAccentColor
 
         for run in rendered.runs {
             let range = run.range

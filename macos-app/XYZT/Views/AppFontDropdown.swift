@@ -58,6 +58,7 @@ struct AppDropdownTriggerLabel: View {
     let title: String
     let fontSettings: AppFontSettings
     var showsChevron: Bool = true
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         HStack(spacing: 8) {
@@ -84,8 +85,8 @@ struct AppDropdownTriggerLabel: View {
         .padding(.horizontal, AppDropdownChrome.horizontalPadding)
         .pillRow()
         .pillBackground(
-            fill: AppDropdownChrome.fieldFill,
-            stroke: AppDropdownChrome.fieldStroke
+            fill: theme.fieldFill,
+            stroke: theme.fieldStroke
         )
     }
 }
@@ -100,6 +101,7 @@ struct AppDropdownRow: View {
     var isSelected: Bool = false
     let action: () -> Void
 
+    @Environment(\.appThemeColors) private var theme
     @State private var isHovered = false
 
     var body: some View {
@@ -129,13 +131,13 @@ struct AppDropdownRow: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(theme.accent)
                 }
             }
             .padding(.horizontal, 10)
             .pillRow()
             .pillBackground(
-                fill: isHovered ? Color.primary.opacity(0.07) : Color.clear
+                fill: isHovered ? theme.hoverFill : Color.clear
             )
         }
         .buttonStyle(.plain)
@@ -155,7 +157,7 @@ struct AppDropdownRow: View {
 enum AppDropdownChrome {
     static let horizontalPadding: CGFloat = 12
 
-    static var fieldFill: Color { Color.primary.opacity(0.06) }
+    static var fieldFill: Color { AppThemeColors.default.fieldFill }
 
-    static var fieldStroke: Color { Color.primary.opacity(0.1) }
+    static var fieldStroke: Color { AppThemeColors.default.fieldStroke }
 }

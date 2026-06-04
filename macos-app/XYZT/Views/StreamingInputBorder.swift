@@ -4,6 +4,7 @@ import SwiftUI
 struct StreamingInputBorder: View {
     var cornerRadius: CGFloat = 14
     var lineWidth: CGFloat = 2
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
@@ -25,12 +26,12 @@ struct StreamingInputBorder: View {
 
     private var gradientColors: [Color] {
         [
-            Color.accentColor.opacity(0.2),
-            Color.accentColor.opacity(0.85),
-            Color.accentColor,
-            Color.white.opacity(0.55),
-            Color.accentColor.opacity(0.5),
-            Color.accentColor.opacity(0.2),
+            theme.accent.opacity(0.2),
+            theme.accent.opacity(0.85),
+            theme.accent,
+            AppAccentPalette.themedWhite(overlayOpacity: 0.55, hue: theme.hue, spread: theme.spread),
+            theme.accent.opacity(0.5),
+            theme.accent.opacity(0.2),
         ]
     }
 

@@ -11,6 +11,7 @@ struct ChatInputBar: View {
     let onStop: () -> Void
     var expandedMode: Bool = false
     var usesHudMaterial: Bool = false
+    @Environment(\.appThemeColors) private var theme
     @FocusState private var isFocused: Bool
     @State private var inputHeight: CGFloat = 24
 
@@ -102,12 +103,12 @@ struct ChatInputBar: View {
         Button(action: submit) {
             Image(systemName: "arrow.up")
                 .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .bold))
-            .foregroundStyle(canSend ? Color.white : Color.secondary.opacity(0.5))
+            .foregroundStyle(canSend ? Color.white : theme.secondaryMuted)
             .padding(.horizontal, 11)
             .padding(.vertical, 6)
             .background {
                 Capsule()
-                    .fill(canSend ? Color.accentColor : Color.primary.opacity(0.1))
+                    .fill(canSend ? theme.accent : theme.fieldStroke)
             }
         }
         .buttonStyle(.plain)

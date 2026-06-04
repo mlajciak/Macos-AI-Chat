@@ -19,6 +19,13 @@ struct ChatRootView: View {
         mode == .compact && compactPresentation == .strip
     }
 
+    private var theme: AppThemeColors {
+        AppAccentPalette.themeColors(
+            hue: viewModel.preferences.primaryColorHue,
+            spread: viewModel.preferences.primaryColorIntensity
+        )
+    }
+
     var body: some View {
         Group {
             if mode == .expanded {
@@ -32,15 +39,18 @@ struct ChatRootView: View {
                 compactBody
             }
         }
-        .appFontEnvironment(viewModel.preferences)
+        .appAccentEnvironment(viewModel.preferences)
         .appMonoFont()
         .overlay {
-            if mode == .compact, !isCompactStrip {
-                headerOverlays
-                    .appFontContext(viewModel.preferences.fontSettings)
+            if !isCompactStrip, viewModel.isSettingsOpen {
+                SettingsOverlay(
+                    preferences: viewModel.preferences,
+                    usesHudMaterial: true,
+                    onClose: { viewModel.closeOverlays() }
+                )
+                .appFontContext(viewModel.preferences.fontSettings)
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: viewModel.isSessionBrowserOpen)
         .animation(.easeInOut(duration: 0.22), value: viewModel.isSettingsOpen)
         .animation(.easeInOut(duration: 0.22), value: compactPresentation)
         .animation(.easeInOut(duration: 0.22), value: mode)
@@ -53,26 +63,10 @@ struct ChatRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    @ViewBuilder
-    private var headerOverlays: some View {
-        if viewModel.isSessionBrowserOpen {
-            SessionBrowserOverlay(
-                viewModel: viewModel,
-                usesHudMaterial: true
-            )
-        }
-        if viewModel.isSettingsOpen {
-            SettingsOverlay(
-                preferences: viewModel.preferences,
-                usesHudMaterial: true,
-                onClose: { viewModel.closeOverlays() }
-            )
-        }
-    }
-
     private var compactStripBody: some View {
         CompactStripBarView(
             fontSettings: viewModel.preferences.fontSettings,
+            allowsHeaderDrag: viewModel.preferences.compactWindowAnchor == .floating,
             onRestorePanel: onRestoreCompactPanel,
             onExpandWindow: onExpand,
             onClose: onClose
@@ -88,7 +82,7 @@ struct ChatRootView: View {
         .clipShape(RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                .strokeBorder(theme.overlayStroke, lineWidth: 1)
         }
     }
 
@@ -148,7 +142,7 @@ struct ChatRootView: View {
         .clipShape(RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                .strokeBorder(theme.overlayStroke, lineWidth: 1)
         }
         .overlay {
             CompactWindowResizeOverlay(

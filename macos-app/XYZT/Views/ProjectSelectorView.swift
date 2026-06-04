@@ -5,6 +5,7 @@ struct ProjectSelectorView: View {
     let projects: [Project]
     let fontSettings: AppFontSettings
     var prominent: Bool = false
+    @Environment(\.appThemeColors) private var theme
 
     private var selected: Project {
         ProjectCatalog.project(id: selectedProjectId)
@@ -42,8 +43,8 @@ struct ProjectSelectorView: View {
             .pillRow(height: controlHeight)
             .pillBackground(
                 height: controlHeight,
-                fill: AppDropdownChrome.fieldFill,
-                stroke: AppDropdownChrome.fieldStroke
+                fill: theme.fieldFill,
+                stroke: theme.fieldStroke
             )
         } menuContent: { close in
             ForEach(projects) { project in

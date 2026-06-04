@@ -8,10 +8,7 @@ final class ChatViewModel {
     var activeThreadId: String
     var selectedProjectId: String
     var selectedModelId = ""
-    var isSessionBrowserOpen = false
     var isSettingsOpen = false
-    var isExpandedSidebarVisible = true
-    var onExpandedSidebarVisibilityChanged: (() -> Void)?
     var recentlyOpenedProjectIds: [String] = []
     let preferences = AppPreferences()
 

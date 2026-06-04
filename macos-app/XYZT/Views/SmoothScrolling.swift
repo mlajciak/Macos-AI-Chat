@@ -126,7 +126,68 @@ private struct AppScrollStyleConfigurator: NSViewRepresentable {
     }
 }
 
+/// Scrolls an `NSScrollView` to the document bottom (after SwiftUI layout).
+enum AppScrollBottomScroller {
+    @MainActor
+    static func scroll(_ scrollView: NSScrollView, animated: Bool) {
+        guard let documentView = scrollView.documentView else { return }
+        scrollView.layoutSubtreeIfNeeded()
+        documentView.layoutSubtreeIfNeeded()
+
+        let clipView = scrollView.contentView
+        let visibleHeight = clipView.bounds.height
+        let contentHeight = documentView.frame.height
+        let maxOriginY = max(0, contentHeight - visibleHeight)
+        let target = NSPoint(x: clipView.bounds.origin.x, y: maxOriginY)
+
+        if animated {
+            clipView.animator().setBoundsOrigin(target)
+        } else {
+            clipView.setBoundsOrigin(target)
+        }
+        scrollView.reflectScrolledClipView(clipView)
+    }
+}
+
+/// Fires when `trigger` changes and scrolls the host SwiftUI `ScrollView` to the bottom.
+private struct AppScrollToBottomAction: NSViewRepresentable {
+    var trigger: Int
+    var animated: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        NSView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard trigger != context.coordinator.lastTrigger else { return }
+        context.coordinator.lastTrigger = trigger
+        guard trigger > 0, let scrollView = nsView.enclosingScrollView else { return }
+        DispatchQueue.main.async {
+            AppScrollBottomScroller.scroll(scrollView, animated: animated)
+            DispatchQueue.main.async {
+                AppScrollBottomScroller.scroll(scrollView, animated: false)
+            }
+        }
+    }
+
+    final class Coordinator {
+        var lastTrigger = -1
+    }
+}
+
 extension View {
+    func appScrollToBottomOnTrigger(_ trigger: Int, animated: Bool = true) -> some View {
+        background {
+            AppScrollToBottomAction(trigger: trigger, animated: animated)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
+    }
+
     /// Standard macOS scrollers and trackpad scrolling for SwiftUI `ScrollView` content.
     func appScrollStyle(scrollerInsets: NSEdgeInsets = NSEdgeInsetsZero) -> some View {
         background {

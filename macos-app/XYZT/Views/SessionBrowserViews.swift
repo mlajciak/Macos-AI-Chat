@@ -1,89 +1,105 @@
 import SwiftUI
 
-// MARK: - Header breadcrumb
+// MARK: - Header path menu
 
-struct SessionBreadcrumbButton: View {
+struct SessionPathMenu: View {
     @Bindable var viewModel: ChatViewModel
 
     private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: breadcrumbAction) {
-            HStack(spacing: 5) {
-                Image(systemName: "folder")
-                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                    .foregroundStyle(.secondary)
-                if viewModel.hasWorkspace {
-                    Text(viewModel.activeProject.name)
-                        .font(fontSettings.font(for: .caption, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    Text("/")
-                        .font(fontSettings.font(for: .caption))
-                        .foregroundStyle(.tertiary)
-                    Text(viewModel.activeChatTitle)
-                        .font(fontSettings.font(for: .caption))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                } else {
-                    Text("Open folder…")
-                        .font(fontSettings.font(for: .caption, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+        Group {
+            if viewModel.hasWorkspace {
+                Menu {
+                    sessionMenuItems
+                } label: {
+                    sessionPathLabel
                 }
-                Image(systemName: "chevron.down")
-                    .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                    .rotationEffect(.degrees(viewModel.isSessionBrowserOpen ? 180 : 0))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background {
-                GlassChromeBackground(
-                    material: .hudWindow,
-                    shape: .capsule,
-                    isHovered: isHovered
-                )
+                .menuStyle(.borderlessButton)
+                .buttonStyle(.plain)
+                .fixedSize(horizontal: true, vertical: false)
+            } else {
+                Button(action: { viewModel.openProjectFolder() }) {
+                    sessionPathLabel
+                }
+                .buttonStyle(.plain)
             }
         }
-        .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .animation(.easeOut(duration: 0.15), value: isHovered)
-        .macTooltip(viewModel.hasWorkspace ? "Browse projects and sessions" : "Open a project folder")
+        .macTooltip(viewModel.hasWorkspace ? "Switch project or session" : "Open a project folder")
     }
 
-    private func breadcrumbAction() {
-        if viewModel.hasWorkspace {
-            viewModel.toggleSessionBrowser()
-        } else {
+    @ViewBuilder
+    private var sessionMenuItems: some View {
+        Button("Open Folder…", systemImage: "folder.badge.plus") {
             viewModel.openProjectFolder()
         }
+
+        if !viewModel.recentProjects.isEmpty {
+            Divider()
+
+            ForEach(viewModel.recentProjects) { project in
+                Menu {
+                    ForEach(viewModel.threads(for: project.id)) { thread in
+                        Button {
+                            viewModel.selectThread(thread.id)
+                        } label: {
+                            if thread.id == viewModel.activeThreadId {
+                                Label(thread.title, systemImage: "checkmark")
+                            } else {
+                                Text(thread.title)
+                            }
+                        }
+                    }
+                } label: {
+                    Label(project.name, systemImage: "folder.fill")
+                }
+            }
+        }
     }
-}
 
-// MARK: - Session list overlay
-
-struct SessionBrowserOverlay: View {
-    @Bindable var viewModel: ChatViewModel
-    let usesHudMaterial: Bool
-
-    private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
-
-    var body: some View {
-        FloatingMenuOverlay(
-            title: "Switch session",
-            closeHelp: "Close session menu",
-            usesHudMaterial: usesHudMaterial,
-            fontSettings: fontSettings,
-            onClose: { viewModel.closeOverlays() }
-        ) {
-            SessionProjectTree(viewModel: viewModel)
+    private var sessionPathLabel: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "folder")
+                .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
+                .foregroundStyle(.secondary)
+            if viewModel.hasWorkspace {
+                Text(viewModel.activeProject.name)
+                    .font(fontSettings.font(for: .caption, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text("/")
+                    .font(fontSettings.font(for: .caption))
+                    .foregroundStyle(.tertiary)
+                Text(viewModel.activeChatTitle)
+                    .font(fontSettings.font(for: .caption))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            } else {
+                Text("Open folder…")
+                    .font(fontSettings.font(for: .caption, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+            Image(systemName: "chevron.down")
+                .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background {
+            GlassChromeBackground(
+                material: .hudWindow,
+                shape: .capsule,
+                isHovered: isHovered
+            )
         }
     }
 }
 
-// MARK: - Project / session tree (compact overlay + expanded sidebar)
+// MARK: - Project / session tree
 
 struct SessionProjectTree: View {
     @Bindable var viewModel: ChatViewModel
@@ -118,7 +134,6 @@ struct SessionProjectTree: View {
 }
 
 // MARK: - Open folder
-
 struct OpenFolderMenuRow: View {
     let fontSettings: AppFontSettings
     let action: () -> Void

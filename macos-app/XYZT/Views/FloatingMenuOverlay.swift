@@ -24,6 +24,8 @@ struct FloatingMenuOverlay<Content: View>: View {
         FloatingChromeMetrics.menuOverlayCornerRadius
     }
 
+    @Environment(\.appThemeColors) private var theme
+
     var body: some View {
         ZStack(alignment: .top) {
             SessionMenuBackdrop(material: glassMaterial)
@@ -38,7 +40,7 @@ struct FloatingMenuOverlay<Content: View>: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(Color.primary.opacity(usesHudMaterial ? 0.12 : 0.1), lineWidth: 1)
+                .strokeBorder(usesHudMaterial ? theme.overlayStroke : theme.menuStroke, lineWidth: 1)
         }
         .transition(.opacity)
         .zIndex(100)

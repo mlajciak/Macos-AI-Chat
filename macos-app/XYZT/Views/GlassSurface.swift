@@ -12,6 +12,8 @@ struct GlassSurface: View {
     var shadowOpacity: Double = 0.2
     var emphasized: Bool = true
 
+    @Environment(\.appThemeColors) private var theme
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         ZStack {
@@ -28,6 +30,10 @@ struct GlassSurface: View {
                 )
             )
             .blendMode(.plusLighter)
+
+            if theme.glassTintOpacity > 0.001 {
+                shape.fill(theme.accent.opacity(theme.glassTintOpacity))
+            }
         }
         .clipShape(shape)
         .overlay {
@@ -36,7 +42,7 @@ struct GlassSurface: View {
                     colors: [
                         Color.white.opacity(borderTopOpacity),
                         Color.white.opacity(borderBottomOpacity),
-                        Color.primary.opacity(0.1),
+                        theme.fieldStroke,
                     ],
                     startPoint: .top,
                     endPoint: .bottom

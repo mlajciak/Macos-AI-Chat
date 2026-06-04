@@ -55,7 +55,6 @@ struct ConversationLayout<Header: View>: View {
                 FloatingHeaderChrome(
                     expanded: expandedMode,
                     chromeBlurMaterial: chromeBlurMaterial,
-                    contentMaxWidth: expandedContentMaxWidth,
                     content: header
                 )
                 .zIndex(1)
@@ -74,7 +73,10 @@ struct ConversationLayout<Header: View>: View {
                     Spacer(minLength: 0)
 
                     if !isAtBottom, !messages.isEmpty {
-                        JumpToBottomButton(fontSettings: fontSettings) {
+                        JumpToBottomButton(
+                            fontSettings: fontSettings,
+                            glassMaterial: glassMaterial
+                        ) {
                             scrollToBottomSignal += 1
                         }
                         .frame(maxWidth: expandedContentMaxWidth ?? .infinity)

@@ -4,7 +4,6 @@ import SwiftUI
 struct FloatingHeaderChrome<Content: View>: View {
     let expanded: Bool
     let chromeBlurMaterial: NSVisualEffectView.Material
-    var contentMaxWidth: CGFloat?
     @ViewBuilder let content: () -> Content
 
     var body: some View {
@@ -16,11 +15,10 @@ struct FloatingHeaderChrome<Content: View>: View {
                     .accessibilityHidden(true)
             }
             content()
-                .padding(.horizontal, 12)
+                .padding(.horizontal, FloatingChromeMetrics.headerHorizontalPadding)
                 .padding(.top, expanded ? 0 : FloatingChromeMetrics.headerTopPadding)
                 .padding(.bottom, FloatingChromeMetrics.headerBottomPadding)
                 .frame(height: FloatingChromeMetrics.headerBarHeight)
-                .frame(maxWidth: contentMaxWidth ?? .infinity)
                 .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, alignment: .top)

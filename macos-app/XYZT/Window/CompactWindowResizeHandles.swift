@@ -12,7 +12,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
 
     func makeNSView(context: Context) -> CompactResizeTrackingView {
         let view = CompactResizeTrackingView()
-        view.anchor = anchor
+        view.anchor = anchor.resizeAnchor
         view.minSize = minSize
         view.maxSize = maxSize
         view.isStripMode = isStripMode
@@ -23,7 +23,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: CompactResizeTrackingView, context: Context) {
-        nsView.anchor = anchor
+        nsView.anchor = anchor.resizeAnchor
         nsView.minSize = minSize
         nsView.maxSize = maxSize
         nsView.isStripMode = isStripMode
@@ -136,7 +136,7 @@ final class CompactResizeTrackingView: NSView {
 
     private func isPanelResizePoint(_ point: NSPoint) -> Bool {
         switch anchor {
-        case .bottomRight:
+        case .bottomRight, .floating:
             return point.y < edgeThickness || point.x < edgeThickness
         case .bottomLeft:
             return point.y < edgeThickness || point.x > bounds.width - edgeThickness
@@ -149,7 +149,7 @@ final class CompactResizeTrackingView: NSView {
 
     private func isStripResizePoint(_ point: NSPoint) -> Bool {
         switch anchor {
-        case .bottomRight, .topRight:
+        case .bottomRight, .topRight, .floating:
             return point.x < edgeThickness
         case .bottomLeft, .topLeft:
             return point.x > bounds.width - edgeThickness
@@ -158,7 +158,7 @@ final class CompactResizeTrackingView: NSView {
 
     private func addPanelResizeRects() {
         switch anchor {
-        case .bottomRight:
+        case .bottomRight, .floating:
             addCornerRect(at: .topLeft)
             addEdgeRect(.top)
             addEdgeRect(.left)
@@ -179,7 +179,7 @@ final class CompactResizeTrackingView: NSView {
 
     private func addStripResizeRects() {
         switch anchor {
-        case .bottomRight, .topRight:
+        case .bottomRight, .topRight, .floating:
             addEdgeRect(.left)
         case .bottomLeft, .topLeft:
             addEdgeRect(.right)
@@ -260,7 +260,7 @@ final class CompactResizeTrackingView: NSView {
 
     private func horizontalDelta(_ dx: CGFloat) -> CGFloat {
         switch anchor {
-        case .bottomRight, .topRight:
+        case .bottomRight, .topRight, .floating:
             return -dx
         case .bottomLeft, .topLeft:
             return dx
@@ -269,7 +269,7 @@ final class CompactResizeTrackingView: NSView {
 
     private func verticalDelta(_ dy: CGFloat) -> CGFloat {
         switch anchor {
-        case .bottomRight, .bottomLeft:
+        case .bottomRight, .bottomLeft, .floating:
             return dy
         case .topLeft, .topRight:
             return -dy

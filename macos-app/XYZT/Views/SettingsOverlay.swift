@@ -49,7 +49,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
 /// Expanded window: sidebar categories + detail pane (macOS Settings style).
 struct ExpandedSettingsSheet: View {
     @Bindable var preferences: AppPreferences
-    @Environment(\.dismiss) private var dismiss
     @State private var category: SettingsCategory = .openRouter
 
     private var fontSettings: AppFontSettings { preferences.fontSettings }
@@ -81,13 +80,9 @@ struct ExpandedSettingsSheet: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationSplitViewStyle(.balanced)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
+        .toolbar(.hidden, for: .windowToolbar)
         .frame(minWidth: 640, minHeight: 520)
+        .appAccentEnvironment(preferences)
     }
 }
 
@@ -200,10 +195,14 @@ private struct CompactWindowSettingsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SettingsFieldRow(label: "Screen position", fontSettings: fontSettings) {
-                Text("Where the compact chat panel sits on your display.")
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    preferences.compactWindowAnchor == .floating
+                        ? "Drag the compact window by its header to place it anywhere on screen."
+                        : "Where the compact chat panel sits on your display."
+                )
+                .font(fontSettings.font(for: .caption))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             CompactWindowAnchorPicker(
@@ -219,48 +218,60 @@ private struct CompactWindowAnchorPicker: View {
     @Binding var selection: CompactWindowAnchor
     let fontSettings: AppFontSettings
     let glassMaterial: NSVisualEffectView.Material
+    @Environment(\.appThemeColors) private var theme
 
     private let columns = [
         GridItem(.flexible(), spacing: 8),
         GridItem(.flexible(), spacing: 8),
     ]
 
+    private var cornerAnchors: [CompactWindowAnchor] {
+        CompactWindowAnchor.allCases.filter(\.usesCornerSnap)
+    }
+
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(CompactWindowAnchor.allCases) { anchor in
-                Button {
-                    selection = anchor
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: anchor.systemImage)
-                            .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                        Text(anchor.label)
-                            .font(fontSettings.font(for: .caption, weight: .medium))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 8)
-                    .background {
-                        if selection == anchor {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color.accentColor.opacity(0.2))
-                        } else {
-                            GlassSurface.sessionMenu(material: glassMaterial)
-                        }
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(
-                                selection == anchor ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.1),
-                                lineWidth: selection == anchor ? 1 : 0.5
-                            )
-                    }
+        VStack(spacing: 8) {
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(cornerAnchors) { anchor in
+                    anchorButton(anchor)
                 }
-                .buttonStyle(.plain)
+            }
+            anchorButton(.floating)
+        }
+    }
+
+    private func anchorButton(_ anchor: CompactWindowAnchor) -> some View {
+        Button {
+            selection = anchor
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: anchor.systemImage)
+                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
+                Text(anchor.label)
+                    .font(fontSettings.font(for: .caption, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+            .background {
+                if selection == anchor {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(theme.accentSelectionFill)
+                } else {
+                    GlassSurface.sessionMenu(material: glassMaterial)
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(
+                        selection == anchor ? theme.accentSelectionStroke : theme.fieldStroke,
+                        lineWidth: selection == anchor ? 1 : 0.5
+                    )
             }
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -282,6 +293,20 @@ private struct AppearanceSettingsSection: View {
                     selection: $preferences.theme,
                     fontSettings: fontSettings,
                     glassMaterial: glassMaterial
+                )
+            }
+
+            SettingsFieldRow(label: "Hue", fontSettings: fontSettings) {
+                HueSettingsControl(
+                    hue: $preferences.primaryColorHue,
+                    fontSettings: fontSettings
+                )
+            }
+
+            SettingsFieldRow(label: "Intensity", fontSettings: fontSettings) {
+                ColorSpreadSettingsControl(
+                    spread: $preferences.primaryColorIntensity,
+                    fontSettings: fontSettings
                 )
             }
 
@@ -316,6 +341,7 @@ private enum OpenRouterModelLoadState: Equatable {
 private struct OpenRouterSettingsSection: View {
     @Bindable var preferences: AppPreferences
     let fontSettings: AppFontSettings
+    @Environment(\.appThemeColors) private var theme
 
     @State private var models: [OpenRouterClient.Model] = []
     @State private var searchQuery = ""
@@ -330,8 +356,8 @@ private struct OpenRouterSettingsSection: View {
                     .padding(.horizontal, AppDropdownChrome.horizontalPadding)
                     .pillRow()
                     .pillBackground(
-                        fill: AppDropdownChrome.fieldFill,
-                        stroke: AppDropdownChrome.fieldStroke
+                        fill: theme.fieldFill,
+                        stroke: theme.fieldStroke
                     )
             }
 
@@ -350,8 +376,8 @@ private struct OpenRouterSettingsSection: View {
                     .padding(.horizontal, AppDropdownChrome.horizontalPadding)
                     .pillRow()
                     .pillBackground(
-                        fill: AppDropdownChrome.fieldFill,
-                        stroke: AppDropdownChrome.fieldStroke
+                        fill: theme.fieldFill,
+                        stroke: theme.fieldStroke
                     )
 
                     HStack {
@@ -445,6 +471,7 @@ private struct OpenRouterModelListPanel: View {
     let fontSettings: AppFontSettings
     let isEnabled: (String) -> Bool
     let onToggle: (OpenRouterClient.Model, Bool) -> Void
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         Group {
@@ -490,9 +517,9 @@ private struct OpenRouterModelListPanel: View {
     ) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: OpenRouterModelListChrome.cornerRadius, style: .continuous)
-                .fill(AppDropdownChrome.fieldFill)
+                .fill(theme.fieldFill)
             RoundedRectangle(cornerRadius: OpenRouterModelListChrome.cornerRadius, style: .continuous)
-                .strokeBorder(AppDropdownChrome.fieldStroke, lineWidth: 0.5)
+                .strokeBorder(theme.fieldStroke, lineWidth: 0.5)
 
             content()
                 .padding(6)
@@ -535,6 +562,7 @@ private struct OpenRouterModelRow: View {
     let fontSettings: AppFontSettings
     let onToggle: (Bool) -> Void
 
+    @Environment(\.appThemeColors) private var theme
     @State private var isHovered = false
 
     var body: some View {
@@ -544,7 +572,7 @@ private struct OpenRouterModelRow: View {
             HStack(alignment: .center, spacing: 8) {
                 Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary.opacity(0.65))
+                    .foregroundStyle(isEnabled ? theme.accent : theme.secondaryMuted)
                     .frame(width: 16, alignment: .center)
 
                 VStack(alignment: .leading, spacing: 1) {
@@ -574,10 +602,10 @@ private struct OpenRouterModelRow: View {
 
     private var rowFill: Color {
         if isEnabled {
-            return Color.accentColor.opacity(0.1)
+            return theme.accentMuted
         }
         if isHovered {
-            return Color.primary.opacity(0.06)
+            return theme.mutedRowFill
         }
         return .clear
     }
@@ -589,6 +617,7 @@ private struct ChatTitleModelSettingsSection: View {
     @Bindable var preferences: AppPreferences
     let fontSettings: AppFontSettings
     var usesHudMaterial: Bool = false
+    @Environment(\.appThemeColors) private var theme
 
     private var glassMaterial: NSVisualEffectView.Material {
         usesHudMaterial ? .hudWindow : .popover
@@ -633,8 +662,8 @@ private struct ChatTitleModelSettingsSection: View {
                         .padding(.horizontal, AppDropdownChrome.horizontalPadding)
                         .pillRow()
                         .pillBackground(
-                            fill: AppDropdownChrome.fieldFill,
-                            stroke: AppDropdownChrome.fieldStroke
+                            fill: theme.fieldFill,
+                            stroke: theme.fieldStroke
                         )
                 }
             } else {
@@ -696,6 +725,55 @@ private struct ThemeSettingsPicker: View {
     }
 }
 
+// MARK: - Hue & spread
+
+private struct HueSettingsControl: View {
+    @Binding var hue: Double
+    let fontSettings: AppFontSettings
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Slider(value: $hue, in: 0 ... 1, step: 0.01)
+
+            HueColorSwatch(hue: hue)
+                .frame(minWidth: 34, alignment: .trailing)
+        }
+        .padding(.horizontal, AppDropdownChrome.horizontalPadding)
+        .pillRow()
+        .pillBackground(
+            fill: theme.fieldFill,
+            stroke: theme.fieldStroke
+        )
+    }
+
+    @Environment(\.appThemeColors) private var theme
+}
+
+private struct ColorSpreadSettingsControl: View {
+    @Binding var spread: Double
+    let fontSettings: AppFontSettings
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Slider(value: $spread, in: 0 ... 1, step: 0.01)
+
+            Text("\(Int((spread * 100).rounded()))%")
+                .font(fontSettings.font(for: .caption))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 34, alignment: .trailing)
+        }
+        .padding(.horizontal, AppDropdownChrome.horizontalPadding)
+        .pillRow()
+        .pillBackground(
+            fill: theme.fieldFill,
+            stroke: theme.fieldStroke
+        )
+    }
+
+    @Environment(\.appThemeColors) private var theme
+}
+
 // MARK: - Font size
 
 private struct FontSizeSettingsControl: View {
@@ -715,10 +793,12 @@ private struct FontSizeSettingsControl: View {
         .padding(.horizontal, AppDropdownChrome.horizontalPadding)
         .pillRow()
         .pillBackground(
-            fill: AppDropdownChrome.fieldFill,
-            stroke: AppDropdownChrome.fieldStroke
+            fill: theme.fieldFill,
+            stroke: theme.fieldStroke
         )
     }
+
+    @Environment(\.appThemeColors) private var theme
 }
 
 // MARK: - Font family
@@ -728,6 +808,7 @@ private struct FontFamilySettingsPicker: View {
     @Binding var customName: String
     let fontSettings: AppFontSettings
     let glassMaterial: NSVisualEffectView.Material
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -758,8 +839,8 @@ private struct FontFamilySettingsPicker: View {
                     .padding(.horizontal, AppDropdownChrome.horizontalPadding)
                     .pillRow()
                     .pillBackground(
-                        fill: AppDropdownChrome.fieldFill,
-                        stroke: AppDropdownChrome.fieldStroke
+                        fill: theme.fieldFill,
+                        stroke: theme.fieldStroke
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

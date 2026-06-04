@@ -104,6 +104,10 @@ final class AppPreferences {
         static let chatTitleModelSource = "xyzt.chatTitleModelSource"
         static let chatTitleCustomModelId = "xyzt.chatTitleCustomModelId"
         static let compactWindowAnchor = "xyzt.compactWindowAnchor"
+        static let compactFloatingOriginX = "xyzt.compactFloatingOriginX"
+        static let compactFloatingOriginY = "xyzt.compactFloatingOriginY"
+        static let primaryColorHue = "xyzt.primaryColorHue"
+        static let primaryColorIntensity = "xyzt.primaryColorIntensity"
     }
 
     var menuModelIds: [String] {
@@ -179,6 +183,48 @@ final class AppPreferences {
         didSet { UserDefaults.standard.set(compactWindowAnchor.rawValue, forKey: Keys.compactWindowAnchor) }
     }
 
+    /// Bottom-left origin of the compact panel when `compactWindowAnchor` is `.floating`.
+    var compactFloatingWindowOrigin: CGPoint? {
+        didSet {
+            let defaults = UserDefaults.standard
+            if let compactFloatingWindowOrigin {
+                defaults.set(compactFloatingWindowOrigin.x, forKey: Keys.compactFloatingOriginX)
+                defaults.set(compactFloatingWindowOrigin.y, forKey: Keys.compactFloatingOriginY)
+            } else {
+                defaults.removeObject(forKey: Keys.compactFloatingOriginX)
+                defaults.removeObject(forKey: Keys.compactFloatingOriginY)
+            }
+        }
+    }
+
+    /// Hue wheel position (0…1). Default matches macOS accent at first launch.
+    var primaryColorHue: Double {
+        didSet {
+            let clamped = Self.clampUnit(primaryColorHue)
+            if clamped != primaryColorHue {
+                primaryColorHue = clamped
+                return
+            }
+            UserDefaults.standard.set(primaryColorHue, forKey: Keys.primaryColorHue)
+        }
+    }
+
+    /// 0 = accent hue only; 1 = hue also tints fields, hovers, and glass.
+    var primaryColorIntensity: Double {
+        didSet {
+            let clamped = Self.clampUnit(primaryColorIntensity)
+            if clamped != primaryColorIntensity {
+                primaryColorIntensity = clamped
+                return
+            }
+            UserDefaults.standard.set(primaryColorIntensity, forKey: Keys.primaryColorIntensity)
+        }
+    }
+
+    var resolvedAccentColor: Color {
+        AppAccentPalette.themedAccent(hue: primaryColorHue, spread: primaryColorIntensity)
+    }
+
     var fontSettings: AppFontSettings {
         AppFontSettings(
             bodyPointSize: CGFloat(bodyPointSize),
@@ -235,6 +281,30 @@ final class AppPreferences {
         } else {
             compactWindowAnchor = .default
         }
+        if defaults.object(forKey: Keys.compactFloatingOriginX) != nil,
+           defaults.object(forKey: Keys.compactFloatingOriginY) != nil {
+            compactFloatingWindowOrigin = CGPoint(
+                x: defaults.double(forKey: Keys.compactFloatingOriginX),
+                y: defaults.double(forKey: Keys.compactFloatingOriginY)
+            )
+        } else {
+            compactFloatingWindowOrigin = nil
+        }
+
+        if defaults.object(forKey: Keys.primaryColorHue) != nil {
+            primaryColorHue = Self.clampUnit(defaults.double(forKey: Keys.primaryColorHue))
+        } else {
+            primaryColorHue = AppAccentPalette.defaultHue
+        }
+        if defaults.object(forKey: Keys.primaryColorIntensity) != nil {
+            primaryColorIntensity = Self.clampUnit(defaults.double(forKey: Keys.primaryColorIntensity))
+        } else {
+            primaryColorIntensity = 0
+        }
+    }
+
+    private static func clampUnit(_ value: Double) -> Double {
+        min(max(value, 0), 1)
     }
 
     private static func clampPointSize(_ value: Double) -> Double {

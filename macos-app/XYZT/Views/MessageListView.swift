@@ -46,12 +46,14 @@ struct MessageListView: View {
                         }
 
                         Color.clear
+                            .frame(height: max(bottomInset, 0))
+                            .accessibilityHidden(true)
+                        Color.clear
                             .frame(height: 1)
                             .id(Self.scrollEndId)
                     }
                     .padding(.horizontal, MessageListLayout.horizontalPadding)
                     .padding(.top, topInset)
-                    .padding(.bottom, bottomInset)
                     .frame(maxWidth: contentMaxWidth ?? .infinity)
                     .frame(maxWidth: .infinity)
                     .appScrollStyle(scrollerInsets: scrollerInsets)
@@ -68,6 +70,7 @@ struct MessageListView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                 .appVerticalScrollIndicators()
+                .appScrollToBottomOnTrigger(scrollToBottomSignal)
                 .onAppear {
                     stickToBottom = true
                     scrollToEnd(proxy: proxy, animated: false)
@@ -108,12 +111,18 @@ struct MessageListView: View {
     ) {
         scrollPinTask?.cancel()
         let perform = {
+            let scroll = {
+                if let lastId = messages.last?.id {
+                    proxy.scrollTo(lastId, anchor: .bottom)
+                }
+                proxy.scrollTo(Self.scrollEndId, anchor: .bottom)
+            }
             if animated {
                 withAnimation(.easeOut(duration: 0.2)) {
-                    proxy.scrollTo(Self.scrollEndId, anchor: .bottom)
+                    scroll()
                 }
             } else {
-                proxy.scrollTo(Self.scrollEndId, anchor: .bottom)
+                scroll()
             }
         }
         if throttle {
@@ -127,6 +136,9 @@ struct MessageListView: View {
         // Run after layout so resize / new content scrolls to the true bottom.
         DispatchQueue.main.async {
             perform()
+            DispatchQueue.main.async {
+                perform()
+            }
         }
     }
 }
