@@ -14,6 +14,7 @@ struct ConversationLayout<Header: View>: View {
     var usesHudMaterial: Bool = false
     var usesExternalTitleBar: Bool = false
     @Environment(\.appFontSettings) private var fontSettings
+    @Environment(\.compactResizeOverlayConfig) private var compactResizeConfig
     @State private var isAtBottom = true
     @State private var scrollToBottomSignal = 0
     @ViewBuilder var header: () -> Header
@@ -51,13 +52,27 @@ struct ConversationLayout<Header: View>: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            if let compactResizeConfig {
+                CompactWindowResizeOverlay(
+                    anchor: compactResizeConfig.anchor,
+                    minSize: compactResizeConfig.minSize,
+                    maxSize: compactResizeConfig.maxSize,
+                    headerExclusionHeight: compactResizeConfig.headerExclusionHeight,
+                    isStripMode: compactResizeConfig.isStripMode,
+                    onResizeStarted: compactResizeConfig.onResizeStarted,
+                    onResizeEnded: compactResizeConfig.onResizeEnded,
+                    onCollapseToStrip: compactResizeConfig.onCollapseToStrip
+                )
+                .zIndex(1)
+            }
+
             if !usesExternalTitleBar {
                 FloatingHeaderChrome(
                     expanded: expandedMode,
                     chromeBlurMaterial: chromeBlurMaterial,
                     content: header
                 )
-                .zIndex(1)
+                .zIndex(2)
             }
 
             ZStack(alignment: .bottom) {
@@ -70,8 +85,6 @@ struct ConversationLayout<Header: View>: View {
                 .allowsHitTesting(false)
 
                 VStack(spacing: 8) {
-                    Spacer(minLength: 0)
-
                     if !isAtBottom, !messages.isEmpty {
                         JumpToBottomButton(
                             fontSettings: fontSettings,
@@ -100,6 +113,7 @@ struct ConversationLayout<Header: View>: View {
                     .frame(maxWidth: expandedContentMaxWidth ?? .infinity)
                     .frame(maxWidth: .infinity)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .zIndex(1)

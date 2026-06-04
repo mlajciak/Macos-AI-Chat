@@ -133,44 +133,31 @@ struct SettingsCategoryDetail: View {
     }
 }
 
-/// Settings fields without overlay chrome (compact overlay: all categories).
+/// Settings fields without overlay chrome (compact overlay: collapsible categories).
 struct SettingsPanelContent: View {
     @Bindable var preferences: AppPreferences
     var usesHudMaterial: Bool = false
+
+    @State private var expandedCategories: Set<SettingsCategory> = [.openRouter]
 
     private var fontSettings: AppFontSettings { preferences.fontSettings }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                OpenRouterSettingsSection(
-                    preferences: preferences,
-                    fontSettings: fontSettings
-                )
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(SettingsCategory.allCases) { category in
+                    SettingsCollapsibleCategory(
+                        category: category,
+                        fontSettings: fontSettings,
+                        isExpanded: categoryExpanded(category)
+                    ) {
+                        categorySectionContent(category)
+                    }
 
-                Divider().opacity(0.35)
-
-                CompactWindowSettingsSection(
-                    preferences: preferences,
-                    fontSettings: fontSettings,
-                    usesHudMaterial: usesHudMaterial
-                )
-
-                Divider().opacity(0.35)
-
-                ChatTitleModelSettingsSection(
-                    preferences: preferences,
-                    fontSettings: fontSettings,
-                    usesHudMaterial: usesHudMaterial
-                )
-
-                Divider().opacity(0.35)
-
-                AppearanceSettingsSection(
-                    preferences: preferences,
-                    fontSettings: fontSettings,
-                    usesHudMaterial: usesHudMaterial
-                )
+                    if category != SettingsCategory.allCases.last {
+                        Divider().opacity(0.35)
+                    }
+                }
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
@@ -178,6 +165,94 @@ struct SettingsPanelContent: View {
             .appScrollStyle()
         }
         .scrollbarsWhenNeeded()
+    }
+
+    private func categoryExpanded(_ category: SettingsCategory) -> Binding<Bool> {
+        Binding(
+            get: { expandedCategories.contains(category) },
+            set: { isExpanded in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if isExpanded {
+                        expandedCategories.insert(category)
+                    } else {
+                        expandedCategories.remove(category)
+                    }
+                }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func categorySectionContent(_ category: SettingsCategory) -> some View {
+        switch category {
+        case .openRouter:
+            OpenRouterSettingsSection(
+                preferences: preferences,
+                fontSettings: fontSettings
+            )
+        case .chat:
+            VStack(alignment: .leading, spacing: 16) {
+                CompactWindowSettingsSection(
+                    preferences: preferences,
+                    fontSettings: fontSettings,
+                    usesHudMaterial: usesHudMaterial
+                )
+                ChatTitleModelSettingsSection(
+                    preferences: preferences,
+                    fontSettings: fontSettings,
+                    usesHudMaterial: usesHudMaterial
+                )
+            }
+        case .appearance:
+            AppearanceSettingsSection(
+                preferences: preferences,
+                fontSettings: fontSettings,
+                usesHudMaterial: usesHudMaterial
+            )
+        }
+    }
+}
+
+private struct SettingsCollapsibleCategory<Content: View>: View {
+    let category: SettingsCategory
+    let fontSettings: AppFontSettings
+    @Binding var isExpanded: Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: category.systemImage)
+                        .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18)
+
+                    Text(category.title)
+                        .font(fontSettings.font(for: .body, weight: .medium))
+                        .foregroundStyle(.primary)
+
+                    Spacer(minLength: 4)
+
+                    Image(systemName: "chevron.down")
+                        .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .macTooltip(isExpanded ? "Collapse \(category.title)" : "Expand \(category.title)")
+
+            if isExpanded {
+                content()
+                    .padding(.top, 10)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
     }
 }
 

@@ -94,6 +94,28 @@ struct HeaderToolbarActions: View {
     }
 }
 
+/// Frosted glass backing shared by toolbar icon buttons and the session path chip.
+struct HeaderToolbarGlassChip<Content: View>: View {
+    let shape: GlassChromeShape
+    var material: NSVisualEffectView.Material = .hudWindow
+    @ViewBuilder let content: () -> Content
+
+    @State private var isHovered = false
+
+    var body: some View {
+        content()
+            .background {
+                GlassChromeBackground(
+                    material: material,
+                    shape: shape,
+                    isHovered: isHovered
+                )
+            }
+            .onHover { isHovered = $0 }
+            .animation(.easeOut(duration: 0.15), value: isHovered)
+    }
+}
+
 struct HeaderToolbarIconButton: View {
     let systemImage: String
     let tooltip: String
@@ -102,25 +124,16 @@ struct HeaderToolbarIconButton: View {
     var glassMaterial: NSVisualEffectView.Material = .hudWindow
     let action: () -> Void
 
-    @State private var isHovered = false
-
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(fontSettings.font(size: fontSettings.iconPointSize, weight: weight))
-                .foregroundStyle(.primary)
-                .frame(width: 28, height: 28)
-                .background {
-                    GlassChromeBackground(
-                        material: glassMaterial,
-                        shape: .circle,
-                        isHovered: isHovered
-                    )
-                }
+            HeaderToolbarGlassChip(shape: .circle, material: glassMaterial) {
+                Image(systemName: systemImage)
+                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: weight))
+                    .foregroundStyle(.primary)
+                    .frame(width: 28, height: 28)
+            }
         }
         .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-        .animation(.easeOut(duration: 0.15), value: isHovered)
         .help(tooltip)
         .accessibilityLabel(tooltip)
     }

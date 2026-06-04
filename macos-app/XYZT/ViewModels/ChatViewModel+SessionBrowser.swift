@@ -33,10 +33,25 @@ extension ChatViewModel {
             openProjectFolder()
             return
         }
-        let thread = ChatThread.new(projectId: selectedProjectId)
-        threads.insert(thread, at: 0)
+        createNewChat(in: selectedProjectId)
+    }
+
+    func createNewChat(in projectId: String) {
+        guard ProjectCatalog.isUserProject(projectId),
+              ProjectCatalog.folderURL(for: projectId) != nil
+        else { return }
+
+        if selectedProjectId != projectId {
+            persistCurrentProject()
+            selectedProjectId = projectId
+            recordProjectOpened(projectId)
+            loadProjectWorkspace(projectId)
+        }
+
+        let thread = ChatThread.new(projectId: projectId)
+        threads.append(thread)
         activeThreadId = thread.id
-        recordProjectOpened(selectedProjectId)
+        recordProjectOpened(projectId)
         persistCurrentProject()
         closeOverlays()
         draft = ""

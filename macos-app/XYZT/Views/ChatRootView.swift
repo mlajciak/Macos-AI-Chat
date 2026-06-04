@@ -14,9 +14,48 @@ struct ChatRootView: View {
     var onCompactResizeEnded: (() -> Void)?
     var onCollapseToStrip: (() -> Void)?
     var onCompactAnchorChange: (() -> Void)?
+    var onFloatingDragEnded: (() -> Void)?
 
     private var isCompactStrip: Bool {
         mode == .compact && compactPresentation == .strip
+    }
+
+    private var compactPanelResizeConfig: CompactResizeOverlayConfig {
+        CompactResizeOverlayConfig(
+            anchor: viewModel.preferences.compactWindowAnchor,
+            minSize: NSSize(
+                width: ChatWindowController.compactMinSize.width,
+                height: ChatWindowController.compactMinSize.height
+            ),
+            maxSize: NSSize(
+                width: ChatWindowController.compactMaxSize.width,
+                height: ChatWindowController.compactMaxSize.height
+            ),
+            headerExclusionHeight: FloatingChromeMetrics.headerOverlayHeight(expanded: false),
+            isStripMode: false,
+            onResizeStarted: onCompactResizeStarted,
+            onResizeEnded: onCompactResizeEnded,
+            onCollapseToStrip: onCollapseToStrip
+        )
+    }
+
+    private var compactStripResizeConfig: CompactResizeOverlayConfig {
+        CompactResizeOverlayConfig(
+            anchor: viewModel.preferences.compactWindowAnchor,
+            minSize: NSSize(
+                width: ChatWindowController.compactMinSize.width,
+                height: ChatWindowController.compactStripSize.height
+            ),
+            maxSize: NSSize(
+                width: ChatWindowController.compactMaxSize.width,
+                height: ChatWindowController.compactStripSize.height
+            ),
+            headerExclusionHeight: 0,
+            isStripMode: true,
+            onResizeStarted: onCompactResizeStarted,
+            onResizeEnded: onCompactResizeEnded,
+            onCollapseToStrip: nil
+        )
     }
 
     private var theme: AppThemeColors {
@@ -64,14 +103,18 @@ struct ChatRootView: View {
     }
 
     private var compactStripBody: some View {
-        CompactStripBarView(
-            fontSettings: viewModel.preferences.fontSettings,
-            allowsHeaderDrag: viewModel.preferences.compactWindowAnchor == .floating,
-            onRestorePanel: onRestoreCompactPanel,
-            onExpandWindow: onExpand,
-            onClose: onClose
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        CompactPanelChromeHost(resizeConfig: compactStripResizeConfig) {
+            CompactStripBarView(
+                fontSettings: viewModel.preferences.fontSettings,
+                allowsHeaderDrag: viewModel.preferences.compactWindowAnchor == .floating,
+                onFloatingDragEnded: onFloatingDragEnded,
+                onRestorePanel: onRestoreCompactPanel,
+                onExpandWindow: onExpand,
+                onClose: onClose
+            )
+            .zIndex(2)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
         .background {
             VisualEffectBackground(
                 material: .hudWindow,
@@ -110,25 +153,32 @@ struct ChatRootView: View {
                     CompactHeaderView(
                         viewModel: viewModel,
                         onExpand: onExpand,
-                        onClose: onClose
+                        onClose: onClose,
+                        onFloatingDragEnded: onFloatingDragEnded
                     )
                 }
+                .compactResizeOverlay(compactPanelResizeConfig)
             } else {
-                ZStack(alignment: .top) {
-                    OpenFolderGateView(
-                        fontSettings: viewModel.preferences.fontSettings,
-                        onOpenFolder: { viewModel.openProjectFolder() }
-                    )
-                    FloatingHeaderChrome(
-                        expanded: false,
-                        chromeBlurMaterial: FloatingChromeMetrics.chromeBlurMaterial(usesHudWindow: true)
-                    ) {
-                        CompactHeaderView(
-                            viewModel: viewModel,
-                            onExpand: onExpand,
-                            onClose: onClose
+                CompactPanelChromeHost(resizeConfig: compactPanelResizeConfig) {
+                    ZStack(alignment: .top) {
+                        OpenFolderGateView(
+                            fontSettings: viewModel.preferences.fontSettings,
+                            onOpenFolder: { viewModel.openProjectFolder() }
                         )
+
+                        FloatingHeaderChrome(
+                            expanded: false,
+                            chromeBlurMaterial: FloatingChromeMetrics.chromeBlurMaterial(usesHudWindow: true)
+                        ) {
+                            CompactHeaderView(
+                                viewModel: viewModel,
+                                onExpand: onExpand,
+                                onClose: onClose
+                            )
+                        }
+                        .zIndex(2)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
@@ -143,24 +193,6 @@ struct ChatRootView: View {
         .overlay {
             RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous)
                 .strokeBorder(theme.overlayStroke, lineWidth: 1)
-        }
-        .overlay {
-            CompactWindowResizeOverlay(
-                anchor: viewModel.preferences.compactWindowAnchor,
-                minSize: NSSize(
-                    width: ChatWindowController.compactMinSize.width,
-                    height: ChatWindowController.compactMinSize.height
-                ),
-                maxSize: NSSize(
-                    width: ChatWindowController.compactMaxSize.width,
-                    height: ChatWindowController.compactMaxSize.height
-                ),
-                isStripMode: false,
-                onResizeStarted: onCompactResizeStarted,
-                onResizeEnded: onCompactResizeEnded,
-                onCollapseToStrip: onCollapseToStrip
-            )
-            .allowsHitTesting(true)
         }
     }
 }

@@ -30,5 +30,6 @@ struct FloatingHeaderChrome<Content: View>: View {
                 blendingMode: FloatingChromeMetrics.chromeBlurBlendingMode
             )
         }
+        .contentShape(Rectangle())
     }
 }

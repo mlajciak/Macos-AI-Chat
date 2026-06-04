@@ -118,8 +118,19 @@ enum CompactWindowAnchor: String, CaseIterable, Identifiable, Codable {
         let maxX = visible.maxX - inset - frame.width
         let minY = visible.minY + inset
         let maxY = visible.maxY - inset - frame.height
-        result.origin.x = min(max(frame.origin.x, minX), maxX)
-        result.origin.y = min(max(frame.origin.y, minY), maxY)
+
+        if maxX >= minX {
+            result.origin.x = min(max(frame.origin.x, minX), maxX)
+        } else {
+            result.origin.x = minX
+        }
+
+        if maxY >= minY {
+            result.origin.y = min(max(frame.origin.y, minY), maxY)
+        } else {
+            result.origin.y = minY
+        }
+
         return result
     }
 }

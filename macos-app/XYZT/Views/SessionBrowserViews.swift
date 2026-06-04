@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - Header path menu
@@ -5,97 +6,80 @@ import SwiftUI
 struct SessionPathMenu: View {
     @Bindable var viewModel: ChatViewModel
 
+    @State private var isMenuOpen = false
+
     private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
-    @State private var isHovered = false
+
+    private var pathTooltip: String {
+        if viewModel.hasWorkspace {
+            "\(viewModel.activeProject.name) / \(viewModel.activeChatTitle)"
+        } else {
+            "Open a project folder"
+        }
+    }
 
     var body: some View {
-        Group {
+        Button {
             if viewModel.hasWorkspace {
-                Menu {
-                    sessionMenuItems
-                } label: {
-                    sessionPathLabel
-                }
-                .menuStyle(.borderlessButton)
-                .buttonStyle(.plain)
-                .fixedSize(horizontal: true, vertical: false)
+                isMenuOpen.toggle()
             } else {
-                Button(action: { viewModel.openProjectFolder() }) {
-                    sessionPathLabel
-                }
-                .buttonStyle(.plain)
+                viewModel.openProjectFolder()
             }
+        } label: {
+            sessionPathChipLabel
         }
-        .onHover { isHovered = $0 }
-        .animation(.easeOut(duration: 0.15), value: isHovered)
-        .macTooltip(viewModel.hasWorkspace ? "Switch project or session" : "Open a project folder")
-    }
-
-    @ViewBuilder
-    private var sessionMenuItems: some View {
-        Button("Open Folder…", systemImage: "folder.badge.plus") {
-            viewModel.openProjectFolder()
-        }
-
-        if !viewModel.recentProjects.isEmpty {
-            Divider()
-
-            ForEach(viewModel.recentProjects) { project in
-                Menu {
-                    ForEach(viewModel.threads(for: project.id)) { thread in
-                        Button {
-                            viewModel.selectThread(thread.id)
-                        } label: {
-                            if thread.id == viewModel.activeThreadId {
-                                Label(thread.title, systemImage: "checkmark")
-                            } else {
-                                Text(thread.title)
-                            }
-                        }
-                    }
-                } label: {
-                    Label(project.name, systemImage: "folder.fill")
-                }
+        .buttonStyle(.plain)
+        .help(pathTooltip)
+        .accessibilityLabel(pathTooltip)
+        .popover(isPresented: $isMenuOpen, arrowEdge: .bottom) {
+            SessionPathMenuPopover(viewModel: viewModel) {
+                isMenuOpen = false
             }
         }
     }
 
-    private var sessionPathLabel: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "folder")
-                .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                .foregroundStyle(.secondary)
-            if viewModel.hasWorkspace {
-                Text(viewModel.activeProject.name)
+    private var sessionPathChipLabel: some View {
+        HeaderToolbarGlassChip(shape: .capsule) {
+            HStack(spacing: 5) {
+                Image(systemName: "folder")
+                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
+                    .foregroundStyle(.primary)
+                Text(sessionPathText)
                     .font(fontSettings.font(for: .caption, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                Text("/")
-                    .font(fontSettings.font(for: .caption))
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
+                Image(systemName: "chevron.down")
+                    .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
                     .foregroundStyle(.tertiary)
-                Text(viewModel.activeChatTitle)
-                    .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            } else {
-                Text("Open folder…")
-                    .font(fontSettings.font(for: .caption, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
             }
-            Image(systemName: "chevron.down")
-                .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                .foregroundStyle(.tertiary)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background {
-            GlassChromeBackground(
-                material: .hudWindow,
-                shape: .capsule,
-                isHovered: isHovered
-            )
+    }
+
+    private var sessionPathText: String {
+        if viewModel.hasWorkspace {
+            "\(viewModel.activeProject.name) / \(viewModel.activeChatTitle)"
+        } else {
+            "Open folder…"
         }
+    }
+}
+
+private struct SessionPathMenuPopover: View {
+    @Bindable var viewModel: ChatViewModel
+    let onDismiss: () -> Void
+
+    private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
+
+    var body: some View {
+        SessionProjectTree(viewModel: viewModel)
+            .frame(width: 280, height: 320)
+            .onChange(of: viewModel.activeThreadId) { _, _ in
+                onDismiss()
+            }
     }
 }
 
@@ -111,7 +95,9 @@ struct SessionProjectTree: View {
             LazyVStack(alignment: .leading, spacing: 14) {
                 OpenFolderMenuRow(
                     fontSettings: fontSettings,
-                    action: viewModel.openProjectFolder
+                    action: {
+                        viewModel.openProjectFolder()
+                    }
                 )
 
                 ForEach(viewModel.recentProjects) { project in
@@ -121,7 +107,8 @@ struct SessionProjectTree: View {
                         activeThreadId: viewModel.activeThreadId,
                         fontSettings: fontSettings,
                         onSelect: { viewModel.selectThread($0) },
-                        onDelete: { viewModel.deleteThread($0) }
+                        onDelete: { viewModel.deleteThread($0) },
+                        onNewChat: { viewModel.createNewChat(in: project.id) }
                     )
                 }
             }
@@ -134,6 +121,7 @@ struct SessionProjectTree: View {
 }
 
 // MARK: - Open folder
+
 struct OpenFolderMenuRow: View {
     let fontSettings: AppFontSettings
     let action: () -> Void
@@ -176,6 +164,9 @@ struct ProjectFolderSection: View {
     let fontSettings: AppFontSettings
     let onSelect: (String) -> Void
     let onDelete: (String) -> Void
+    let onNewChat: () -> Void
+
+    @State private var isFolderHovered = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -183,11 +174,43 @@ struct ProjectFolderSection: View {
                 Image(systemName: "folder.fill")
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
                     .foregroundStyle(.secondary)
+
                 Text(project.name)
                     .font(fontSettings.font(for: .caption, weight: .medium))
                     .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 4)
+
+                if isFolderHovered {
+                    Button(action: onNewChat) {
+                        HeaderToolbarGlassChip(shape: .capsule) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "square.and.pencil")
+                                    .font(
+                                        fontSettings.font(
+                                            size: fontSettings.smallIconPointSize,
+                                            weight: .medium
+                                        )
+                                    )
+                                Text("New chat")
+                                    .font(fontSettings.font(for: .caption, weight: .medium))
+                            }
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 8)
+                            .frame(height: 26)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .macTooltip("New chat session")
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
             }
-            .padding(.leading, 2)
+            .padding(.horizontal, 2)
+            .frame(height: 28)
+            .contentShape(Rectangle())
+            .onHover { isFolderHovered = $0 }
+            .animation(.easeOut(duration: 0.15), value: isFolderHovered)
 
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(threads) { thread in
@@ -240,6 +263,7 @@ struct SessionTreeRow: View {
         .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .onTapGesture(perform: onSelect)
         .onHover { isHovered = $0 }
+        .animation(.easeOut(duration: 0.15), value: isHovered)
     }
 
     private var titleFadeMask: some View {
@@ -278,25 +302,17 @@ struct SessionTreeRow: View {
         .padding(.leading, 10)
         .padding(.trailing, 2)
         .frame(width: Self.trailingOverlayWidth, alignment: .trailing)
+        .frame(maxHeight: .infinity)
         .background(alignment: .trailing) {
             LinearGradient(
-                colors: [.clear, overlayScrimTrailing],
+                colors: [.clear, rowBackground],
                 startPoint: .leading,
                 endPoint: .trailing
             )
-            .frame(width: Self.trailingOverlayWidth + 16)
+            .frame(width: Self.trailingOverlayWidth + 20)
         }
         .opacity(isHovered ? 1 : 0)
         .allowsHitTesting(isHovered)
-        .animation(.easeOut(duration: 0.15), value: isHovered)
-    }
-
-    /// Matches the row pill fill so the title fades under the trailing overlay.
-    private var overlayScrimTrailing: Color {
-        if isActive {
-            return Color.primary.opacity(0.1)
-        }
-        return Color.primary.opacity(0.07)
     }
 
     private var rowBackground: Color {

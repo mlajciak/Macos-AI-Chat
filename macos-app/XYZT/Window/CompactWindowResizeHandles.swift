@@ -5,6 +5,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
     let anchor: CompactWindowAnchor
     let minSize: NSSize
     let maxSize: NSSize
+    var headerExclusionHeight: CGFloat = 0
     var isStripMode: Bool = false
     var onResizeStarted: (() -> Void)?
     var onResizeEnded: (() -> Void)?
@@ -15,6 +16,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
         view.anchor = anchor.resizeAnchor
         view.minSize = minSize
         view.maxSize = maxSize
+        view.headerExclusionHeight = headerExclusionHeight
         view.isStripMode = isStripMode
         view.onResizeStarted = onResizeStarted
         view.onResizeEnded = onResizeEnded
@@ -26,6 +28,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
         nsView.anchor = anchor.resizeAnchor
         nsView.minSize = minSize
         nsView.maxSize = maxSize
+        nsView.headerExclusionHeight = headerExclusionHeight
         nsView.isStripMode = isStripMode
         nsView.onResizeStarted = onResizeStarted
         nsView.onResizeEnded = onResizeEnded
@@ -38,6 +41,7 @@ final class CompactResizeTrackingView: NSView {
     var anchor: CompactWindowAnchor = .bottomRight
     var minSize = NSSize(width: 300, height: 380)
     var maxSize = NSSize(width: 560, height: 820)
+    var headerExclusionHeight: CGFloat = 0
     var isStripMode = false
     var onResizeStarted: (() -> Void)?
     var onResizeEnded: (() -> Void)?
@@ -105,7 +109,6 @@ final class CompactResizeTrackingView: NSView {
         let rawHeight = resizeStartFrame.height + verticalDelta(dy)
         if rawHeight < minSize.height {
             isResizing = false
-            onResizeEnded?()
             onCollapseToStrip?()
             return
         }
@@ -134,20 +137,32 @@ final class CompactResizeTrackingView: NSView {
         return isPanelResizePoint(point)
     }
 
+    private func isInHeaderBand(_ point: NSPoint) -> Bool {
+        headerExclusionHeight > 0 && point.y < headerExclusionHeight
+    }
+
     private func isPanelResizePoint(_ point: NSPoint) -> Bool {
+        if isInHeaderBand(point) { return false }
+
         switch anchor {
         case .bottomRight, .floating:
-            return point.y < edgeThickness || point.x < edgeThickness
+            return point.x < edgeThickness
+                || point.y < edgeThickness
         case .bottomLeft:
-            return point.y < edgeThickness || point.x > bounds.width - edgeThickness
+            return point.x > bounds.width - edgeThickness
+                || point.y < edgeThickness
         case .topLeft:
-            return point.y > bounds.height - edgeThickness || point.x > bounds.width - edgeThickness
+            return point.y > bounds.height - edgeThickness
+                || point.x > bounds.width - edgeThickness
         case .topRight:
-            return point.y > bounds.height - edgeThickness || point.x < edgeThickness
+            return point.y > bounds.height - edgeThickness
+                || point.x < edgeThickness
         }
     }
 
     private func isStripResizePoint(_ point: NSPoint) -> Bool {
+        if isInHeaderBand(point) { return false }
+
         switch anchor {
         case .bottomRight, .topRight, .floating:
             return point.x < edgeThickness
@@ -160,12 +175,12 @@ final class CompactResizeTrackingView: NSView {
         switch anchor {
         case .bottomRight, .floating:
             addCornerRect(at: .topLeft)
-            addEdgeRect(.top)
             addEdgeRect(.left)
+            addEdgeRect(.top)
         case .bottomLeft:
             addCornerRect(at: .topRight)
-            addEdgeRect(.top)
             addEdgeRect(.right)
+            addEdgeRect(.top)
         case .topLeft:
             addCornerRect(at: .bottomRight)
             addEdgeRect(.bottom)
@@ -195,7 +210,7 @@ final class CompactResizeTrackingView: NSView {
     }
 
     private func addCornerRect(at corner: ViewCorner) {
-        let rect: NSRect = switch corner {
+        var rect: NSRect = switch corner {
         case .topLeft:
             NSRect(x: 0, y: 0, width: cornerLength, height: cornerLength)
         case .topRight:
@@ -210,11 +225,16 @@ final class CompactResizeTrackingView: NSView {
                 height: cornerLength
             )
         }
+
+        if headerExclusionHeight > 0, corner == .topLeft || corner == .topRight {
+            rect.origin.y = headerExclusionHeight
+        }
+
         addCursorRect(rect, cursor: cursor(for: corner))
     }
 
     private func addEdgeRect(_ edge: ViewEdge) {
-        let rect: NSRect = switch edge {
+        var rect: NSRect = switch edge {
         case .top:
             NSRect(x: cornerLength, y: 0, width: max(0, bounds.width - cornerLength * 2), height: edgeThickness)
         case .bottom:
@@ -234,6 +254,19 @@ final class CompactResizeTrackingView: NSView {
                 height: max(0, bounds.height - cornerLength * 2)
             )
         }
+
+        if headerExclusionHeight > 0 {
+            switch edge {
+            case .left, .right:
+                rect.origin.y = headerExclusionHeight
+                rect.size.height = max(0, bounds.height - cornerLength - headerExclusionHeight)
+            case .top:
+                return
+            case .bottom:
+                break
+            }
+        }
+
         guard rect.width > 0, rect.height > 0 else { return }
         addCursorRect(rect, cursor: cursor(for: edge))
     }
@@ -278,5 +311,36 @@ final class CompactResizeTrackingView: NSView {
 
     private func clampedWidth(_ width: CGFloat) -> CGFloat {
         min(max(width, minSize.width), maxSize.width)
+    }
+}
+
+// MARK: - Environment
+
+struct CompactResizeOverlayConfig {
+    let anchor: CompactWindowAnchor
+    let minSize: NSSize
+    let maxSize: NSSize
+    let headerExclusionHeight: CGFloat
+    let isStripMode: Bool
+    var onResizeStarted: (() -> Void)?
+    var onResizeEnded: (() -> Void)?
+    var onCollapseToStrip: (() -> Void)?
+}
+
+private struct CompactResizeOverlayConfigKey: EnvironmentKey {
+    static let defaultValue: CompactResizeOverlayConfig? = nil
+}
+
+extension EnvironmentValues {
+    var compactResizeOverlayConfig: CompactResizeOverlayConfig? {
+        get { self[CompactResizeOverlayConfigKey.self] }
+        set { self[CompactResizeOverlayConfigKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Passes resize config to `ConversationLayout` / compact hosts; overlay stays below header (`zIndex` 1 vs 2).
+    func compactResizeOverlay(_ config: CompactResizeOverlayConfig?) -> some View {
+        environment(\.compactResizeOverlayConfig, config)
     }
 }

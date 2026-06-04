@@ -26,6 +26,7 @@ final class ChatWindowController: NSObject {
     private var savedCompactPanelSize: NSSize?
     private var isApplyingChrome = false
     private var isUserResizingCompact = false
+    private var isCollapsingToStrip = false
     let viewModel = ChatViewModel()
 
     var isCompactStrip: Bool {
@@ -48,9 +49,6 @@ final class ChatWindowController: NSObject {
         win.isReleasedWhenClosed = false
         win.delegate = self
         win.title = AppBranding.name
-        win.minSize = Self.compactMinSize
-        win.maxSize = Self.compactMaxSize
-
         window = win
         installContent()
         applyCompactChrome()
@@ -101,7 +99,12 @@ final class ChatWindowController: NSObject {
 
     func collapseToStrip() {
         guard mode == .compact, compactPresentation == .panel, let window else { return }
+        guard !isCollapsingToStrip else { return }
 
+        isCollapsingToStrip = true
+        defer { isCollapsingToStrip = false }
+
+        isUserResizingCompact = false
         savedCompactPanelSize = window.frame.size
         compactPresentation = .strip
         viewModel.closeOverlays()
@@ -113,11 +116,11 @@ final class ChatWindowController: NSObject {
                 width: window.frame.width,
                 height: Self.compactStripSize.height
             ),
-            animate: true
+            animate: false
         )
         isApplyingChrome = false
         refreshContent()
-        snapCompactToAnchor(animate: true)
+        snapCompactToAnchor(animate: false)
     }
 
     func restoreCompactPanel() {
@@ -177,9 +180,29 @@ final class ChatWindowController: NSObject {
             },
             onCollapseToStrip: { [weak self] in self?.collapseToStrip() },
             onCompactAnchorChange: { [weak self] in
-                self?.snapCompactToAnchor(animate: true)
+                self?.handleCompactAnchorPreferenceChange()
+            },
+            onFloatingDragEnded: { [weak self] in
+                self?.finishCompactGeometryChange()
             }
         )
+    }
+
+    private func handleCompactAnchorPreferenceChange() {
+        guard mode == .compact, let window else { return }
+
+        isApplyingChrome = true
+        defer { isApplyingChrome = false }
+
+        let anchor = viewModel.preferences.compactWindowAnchor
+        if anchor == .floating {
+            let frame = clampedCompactFrame(window.frame)
+            window.setFrame(frame, display: true, animate: true)
+            persistFloatingCompactOrigin(from: frame)
+        } else {
+            snapCompactToAnchor(animate: true)
+        }
+        refreshContent()
     }
 
     private func applyCompactChrome() {
@@ -211,7 +234,11 @@ final class ChatWindowController: NSObject {
         guard let window else { return }
         switch presentation {
         case .panel:
-            window.minSize = Self.compactMinSize
+            // Allow shrinking below panel min so `windowWillResize` can snap to strip.
+            window.minSize = NSSize(
+                width: Self.compactMinSize.width,
+                height: Self.compactStripSize.height
+            )
             window.maxSize = Self.compactMaxSize
         case .strip:
             window.minSize = NSSize(
@@ -349,6 +376,30 @@ extension ChatWindowController: NSWindowDelegate {
             return false
         }
         return true
+    }
+
+    func windowWillResize(_ sender: NSWindow, to frame: NSRect) -> NSRect {
+        guard mode == .compact,
+              compactPresentation == .panel,
+              !isApplyingChrome,
+              !isCollapsingToStrip
+        else { return frame }
+
+        guard frame.height < Self.compactMinSize.height else { return frame }
+
+        let anchor = viewModel.preferences.compactWindowAnchor
+        let pinned = anchor.pinnedCorner(in: sender.frame)
+        let width = min(
+            max(frame.width, Self.compactMinSize.width),
+            Self.compactMaxSize.width
+        )
+        let stripFrame = anchor.frame(
+            pinnedTo: pinned,
+            size: NSSize(width: width, height: Self.compactStripSize.height)
+        )
+
+        collapseToStrip()
+        return stripFrame
     }
 
     func windowDidResize(_ notification: Notification) {
