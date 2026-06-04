@@ -1,6 +1,6 @@
 import Foundation
 
-/// Mirrors `@xyzt/core` stream parser (`core/src/stream-parser.ts`).
+/// Mirrors `@xyzt/agent` stream parser (`src/agent/stream-parser.ts`).
 enum StreamParserEvent: Equatable {
     case thinkingStart(AgentToolCard)
     case thinkingDelta(cardId: String, delta: String)

@@ -13,11 +13,25 @@ export class AgentStreamParser {
   private mode: 'seek' | 'think' | 'text' = 'seek'
   private carry = ''
   private thinkingCard: AgentToolCard | null = null
+  private thinkingSource: 'tag' | 'reasoning' | null = null
   private nextToolId = 0
+
+  pushReasoning(delta: string): StreamParserEvent[] {
+    if (!delta) return []
+    const events: StreamParserEvent[] = []
+    if (this.mode !== 'think') {
+      this.beginThinking(events, 'reasoning')
+    }
+    events.push(...this.thinkingDelta(delta))
+    return events
+  }
 
   push(delta: string): StreamParserEvent[] {
     if (!delta) return []
     const events: StreamParserEvent[] = []
+    if (this.mode === 'think' && this.thinkingSource === 'reasoning') {
+      events.push(...this.endThinking())
+    }
     let rest = this.carry + delta
     this.carry = ''
 
@@ -38,7 +52,7 @@ export class AgentStreamParser {
           events.push({ type: 'text_delta', delta: rest.slice(0, openIdx) })
         }
         rest = rest.slice(openIdx + THINK_OPEN.length)
-        this.beginThinking(events)
+        this.beginThinking(events, 'tag')
         continue
       }
 
@@ -83,8 +97,9 @@ export class AgentStreamParser {
     return events
   }
 
-  private beginThinking(events: StreamParserEvent[]) {
+  private beginThinking(events: StreamParserEvent[], source: 'tag' | 'reasoning') {
     this.mode = 'think'
+    this.thinkingSource = source
     this.nextToolId += 1
     const card = createToolCard('thinking', `thinking-${this.nextToolId}`)
     this.thinkingCard = card
@@ -99,11 +114,13 @@ export class AgentStreamParser {
 
   private endThinking(): StreamParserEvent[] {
     if (!this.thinkingCard) {
+      this.thinkingSource = null
       this.mode = 'text'
       return []
     }
     const cardId = this.thinkingCard.id
     this.thinkingCard = null
+    this.thinkingSource = null
     this.mode = 'text'
     return [{ type: 'thinking_end', cardId }]
   }

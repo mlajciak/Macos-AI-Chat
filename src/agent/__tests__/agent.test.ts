@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { agentReply, toOpenRouterMessages } from '../src/agent.js'
-import type { ChatMessage } from '../src/types.js'
+import { agentReply, toOpenRouterMessages } from '../agent.js'
+import type { ChatMessage } from '../types.js'
 
 const originalFetch = globalThis.fetch
 

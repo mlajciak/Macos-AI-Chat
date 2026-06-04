@@ -10,6 +10,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./agent": {
+      "types": "./dist/agent/index.d.ts",
+      "import": "./dist/agent/index.js"
+    },
+    "./representations": {
+      "types": "./dist/representations/index.d.ts",
+      "import": "./dist/representations/index.js"
     }
   },
   "scripts": {

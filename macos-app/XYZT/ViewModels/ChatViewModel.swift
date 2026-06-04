@@ -96,7 +96,7 @@ final class ChatViewModel {
         }
 
         startGeneration(
-            messages: session.messages,
+            messages: engineeringMessages(for: session.messages, userRequest: text),
             modelId: selectedModelId,
             apiKey: preferences.openRouterApiKey
         )

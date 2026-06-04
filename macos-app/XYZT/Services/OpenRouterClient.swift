@@ -1,15 +1,37 @@
 import Foundation
 
-/// Mirrors `@xyzt/core` OpenRouter client (`core/src/openrouter.ts`).
+/// Mirrors `@xyzt/agent` OpenRouter client (`src/agent/openrouter.ts`).
 enum OpenRouterClient {
     static let apiBase = URL(string: "https://openrouter.ai/api/v1")!
 
     struct Model: Identifiable, Decodable, Hashable {
+        struct Architecture: Decodable, Hashable {
+            let inputModalities: [String]?
+            let outputModalities: [String]?
+
+            enum CodingKeys: String, CodingKey {
+                case inputModalities = "input_modalities"
+                case outputModalities = "output_modalities"
+            }
+        }
+
         let id: String
         let name: String
         let description: String?
+        let contextLength: Int?
+        let architecture: Architecture?
+        let supportedParameters: [String]?
 
         var provider: String { Self.providerLabel(id: id) }
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case description
+            case contextLength = "context_length"
+            case architecture
+            case supportedParameters = "supported_parameters"
+        }
 
         static func providerLabel(id: String) -> String {
             guard let slash = id.firstIndex(of: "/") else { return "OpenRouter" }
@@ -21,6 +43,13 @@ enum OpenRouterClient {
                 }
                 .joined(separator: " ")
         }
+    }
+
+    struct ModelQuery {
+        var search: String?
+        var outputModalities: [String] = ["text"]
+        var requiredInputModalities: [String] = []
+        var supportedParameters: [String] = []
     }
 
     enum ClientError: LocalizedError {
@@ -44,6 +73,16 @@ enum OpenRouterClient {
         apiKey: String,
         search: String? = nil
     ) async throws -> [Model] {
+        try await listModels(
+            apiKey: apiKey,
+            query: ModelQuery(search: search)
+        )
+    }
+
+    static func listModels(
+        apiKey: String,
+        query: ModelQuery
+    ) async throws -> [Model] {
         guard !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ClientError.missingApiKey
         }
@@ -52,7 +91,20 @@ enum OpenRouterClient {
             url: apiBase.appendingPathComponent("models"),
             resolvingAgainstBaseURL: false
         )!
-        components.queryItems = [URLQueryItem(name: "output_modalities", value: "text")]
+        var queryItems: [URLQueryItem] = []
+        if !query.outputModalities.isEmpty {
+            queryItems.append(URLQueryItem(
+                name: "output_modalities",
+                value: query.outputModalities.joined(separator: ",")
+            ))
+        }
+        if !query.supportedParameters.isEmpty {
+            queryItems.append(URLQueryItem(
+                name: "supported_parameters",
+                value: query.supportedParameters.joined(separator: ",")
+            ))
+        }
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
 
         var request = URLRequest(url: components.url!)
         request.httpMethod = "GET"
@@ -68,12 +120,18 @@ enum OpenRouterClient {
             let data: [Model]?
         }
         let payload = try JSONDecoder().decode(Payload.self, from: data)
-        let models = payload.data ?? []
-        let query = search?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
-        guard !query.isEmpty else { return models }
+        var models = payload.data ?? []
+        if !query.requiredInputModalities.isEmpty {
+            models = models.filter { model in
+                let inputs = model.architecture?.inputModalities ?? []
+                return query.requiredInputModalities.allSatisfy { inputs.contains($0) }
+            }
+        }
+        let search = query.search?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        guard !search.isEmpty else { return models }
         return models.filter { model in
             let haystack = "\(model.id) \(model.name) \(model.description ?? "")".lowercased()
-            return haystack.contains(query)
+            return haystack.contains(search)
         }
     }
 

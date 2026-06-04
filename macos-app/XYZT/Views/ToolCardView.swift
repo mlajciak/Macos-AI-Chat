@@ -74,6 +74,13 @@ struct ToolCardView: View {
     private var iconName: String {
         switch card.kind {
         case .thinking: "brain.head.profile"
+        case .workspaceContext: "folder"
+        case .readFile: "doc.text"
+        case .describeFile: "doc.text.magnifyingglass"
+        case .generateImage: "photo"
+        case .generate3DAsset: "cube"
+        case .renderAsset: "camera.viewfinder"
+        case .validateAsset: "checkmark.seal"
         }
     }
 }

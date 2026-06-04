@@ -1,5 +1,6 @@
 import { OpenRouterError, openRouterHeaders, OPENROUTER_API_BASE } from './openrouter.js'
-import type { ChatCompletionOptions } from './openrouter.js'
+import { chatCompletionBody } from './openrouter.js'
+import type { ChatCompletionOptions, OpenRouterImageContentPart } from './openrouter.js'
 
 function parseSseDataLine(line: string): string | null {
   const trimmed = line.trim()
@@ -9,30 +10,54 @@ function parseSseDataLine(line: string): string | null {
   return payload
 }
 
-function extractDeltaContent(payload: string): string | null {
+export type ChatCompletionStreamChunk = {
+  content?: string
+  reasoning?: string
+  images?: OpenRouterImageContentPart[]
+}
+
+export function extractStreamChunk(payload: string): ChatCompletionStreamChunk | null {
   try {
     const json = JSON.parse(payload) as {
-      choices?: { delta?: { content?: string | null } }[]
+      choices?: {
+        delta?: {
+          content?: string | null
+          reasoning?: string | null
+          reasoning_details?: { text?: string; summary?: string }[]
+          images?: OpenRouterImageContentPart[]
+        }
+      }[]
     }
-    const piece = json.choices?.[0]?.delta?.content
-    if (piece == null || piece === '') return null
-    return piece
+    const delta = json.choices?.[0]?.delta
+    if (!delta) return null
+    const chunk: ChatCompletionStreamChunk = {}
+    if (delta.content) chunk.content = delta.content
+    if (delta.reasoning) {
+      chunk.reasoning = delta.reasoning
+    } else if (delta.reasoning_details?.length) {
+      const reasoning = delta.reasoning_details
+        .map(detail => detail.text ?? detail.summary ?? '')
+        .join('')
+      if (reasoning) chunk.reasoning = reasoning
+    }
+    if (delta.images?.length) chunk.images = delta.images
+    if (!chunk.content && !chunk.reasoning && !chunk.images?.length) return null
+    return chunk
   } catch {
     return null
   }
 }
 
-export async function* streamChatCompletion(
+export async function* streamChatCompletionChunks(
   options: ChatCompletionOptions,
-): AsyncGenerator<string, void, unknown> {
+): AsyncGenerator<ChatCompletionStreamChunk, void, unknown> {
   const fetchFn = options.fetch ?? fetch
   const base = options.baseUrl ?? OPENROUTER_API_BASE
   const res = await fetchFn(`${base}/chat/completions`, {
     method: 'POST',
     headers: openRouterHeaders(options),
     body: JSON.stringify({
-      model: options.model,
-      messages: options.messages,
+      ...chatCompletionBody(options),
       stream: true,
     }),
   })
@@ -72,18 +97,26 @@ export async function* streamChatCompletion(
       for (const line of lines) {
         const payload = parseSseDataLine(line)
         if (!payload) continue
-        const delta = extractDeltaContent(payload)
-        if (delta) yield delta
+        const chunk = extractStreamChunk(payload)
+        if (chunk) yield chunk
       }
     }
     if (buffer.trim()) {
       const payload = parseSseDataLine(buffer)
       if (payload) {
-        const delta = extractDeltaContent(payload)
-        if (delta) yield delta
+        const chunk = extractStreamChunk(payload)
+        if (chunk) yield chunk
       }
     }
   } finally {
     reader.releaseLock()
+  }
+}
+
+export async function* streamChatCompletion(
+  options: ChatCompletionOptions,
+): AsyncGenerator<string, void, unknown> {
+  for await (const chunk of streamChatCompletionChunks(options)) {
+    if (chunk.content) yield chunk.content
   }
 }

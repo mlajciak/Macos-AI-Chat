@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSession, reduce } from '../src/session.js'
+import { createSession, reduce } from '../session.js'
 
 describe('session reducer', () => {
   it('starts empty', () => {

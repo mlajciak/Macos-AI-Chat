@@ -2,6 +2,13 @@ import Foundation
 
 enum AgentToolKind: String, Codable, Equatable {
     case thinking
+    case workspaceContext = "workspace_context"
+    case readFile = "read_file"
+    case describeFile = "describe_file"
+    case generateImage = "generate_image"
+    case generate3DAsset = "generate_3d_asset"
+    case renderAsset = "render_asset"
+    case validateAsset = "validate_asset"
 }
 
 struct AgentToolCard: Identifiable, Equatable, Codable {

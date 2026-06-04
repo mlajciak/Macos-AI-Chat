@@ -9,6 +9,24 @@ final class OpenRouterClientTests: XCTestCase {
         )
     }
 
+    func testModelDecodesModalityMetadata() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "id": "openai/gpt-4o",
+            "name": "GPT-4o",
+            "context_length": 128000,
+            "architecture": [
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+            ],
+            "supported_parameters": ["tools"],
+        ])
+        let model = try JSONDecoder().decode(OpenRouterClient.Model.self, from: data)
+        XCTAssertEqual(model.contextLength, 128000)
+        XCTAssertEqual(model.architecture?.inputModalities, ["text", "image"])
+        XCTAssertEqual(model.architecture?.outputModalities, ["text"])
+        XCTAssertEqual(model.supportedParameters, ["tools"])
+    }
+
     func testChunkFromSseLineParsesReasoningDetails() {
         let payloadData = try! JSONSerialization.data(withJSONObject: [
             "choices": [[

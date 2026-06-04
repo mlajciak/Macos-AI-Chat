@@ -1,6 +1,6 @@
 import Foundation
 
-/// Mirrors `@xyzt/core` agent streaming (`core/src/agent-stream.ts`).
+/// Mirrors `@xyzt/agent` agent streaming (`src/agent/agent-stream.ts`).
 enum ChatAgent {
     static func streamReply(
         messages: [ChatMessage],

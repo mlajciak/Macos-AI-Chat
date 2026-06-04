@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   OpenRouterError,
   chatCompletion,
+  chatCompletionBody,
   listModels,
   providerLabel,
-} from '../src/openrouter.js'
+} from '../openrouter.js'
 
 const originalFetch = globalThis.fetch
 
@@ -45,6 +46,31 @@ describe('listModels', () => {
     expect(models.map(m => m.id)).toEqual(['anthropic/claude-3.5-sonnet'])
   })
 
+  it('filters by required input modalities from model metadata', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      Response.json({
+        data: [
+          {
+            id: 'openai/gpt-4o',
+            name: 'GPT-4o',
+            architecture: { input_modalities: ['text', 'image'] },
+          },
+          {
+            id: 'openai/o3-mini',
+            name: 'o3 mini',
+            architecture: { input_modalities: ['text'] },
+          },
+        ],
+      }),
+    ) as typeof fetch
+
+    const models = await listModels(
+      { apiKey: 'sk-test' },
+      { requiredInputModalities: ['image'] },
+    )
+    expect(models.map(m => m.id)).toEqual(['openai/gpt-4o'])
+  })
+
   it('throws OpenRouterError on failure', async () => {
     globalThis.fetch = vi.fn(async () =>
       Response.json({ error: { message: 'Invalid key' } }, { status: 401 }),
@@ -53,6 +79,30 @@ describe('listModels', () => {
     await expect(listModels({ apiKey: 'bad' })).rejects.toBeInstanceOf(
       OpenRouterError,
     )
+  })
+})
+
+describe('chatCompletionBody', () => {
+  it('includes multimodal content, modalities, and tools', () => {
+    const body = chatCompletionBody({
+      apiKey: 'sk-test',
+      model: 'openai/gpt-4o',
+      modalities: ['text', 'image'],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Inspect this render' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,abc' } },
+          ],
+        },
+      ],
+      tools: [{ type: 'openrouter:image_generation', parameters: { quality: 'high' } }],
+    })
+    expect(body.modalities).toEqual(['text', 'image'])
+    expect(body.tools).toEqual([
+      { type: 'openrouter:image_generation', parameters: { quality: 'high' } },
+    ])
   })
 })
 
