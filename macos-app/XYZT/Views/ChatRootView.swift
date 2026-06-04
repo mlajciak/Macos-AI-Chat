@@ -22,7 +22,10 @@ struct ChatRootView: View {
     var body: some View {
         Group {
             if mode == .expanded {
-                ExpandedWindowLayout(viewModel: viewModel)
+                ExpandedWindowLayout(
+                    viewModel: viewModel,
+                    onCompact: onCompact
+                )
             } else if isCompactStrip {
                 compactStripBody
             } else {

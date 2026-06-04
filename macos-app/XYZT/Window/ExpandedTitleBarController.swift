@@ -1,60 +1,37 @@
 import AppKit
 import SwiftUI
 
-/// Trailing window actions + leading sidebar toggle when the sidebar column is hidden.
+/// Leading sidebar toggle in the system title bar when the sidebar column is hidden.
 @MainActor
 final class ExpandedTitleBarController {
     private var leadingAccessory: NSTitlebarAccessoryViewController?
-    private var toolbarAccessory: NSTitlebarAccessoryViewController?
 
-    func install(
-        on window: NSWindow,
-        viewModel: ChatViewModel,
-        onCompact: @escaping () -> Void
-    ) {
+    func install(on window: NSWindow, viewModel: ChatViewModel) {
         uninstall(from: window)
 
-        if !viewModel.isExpandedSidebarVisible {
-            let leadingHost = NSHostingView(
-                rootView: ExpandedTitleBarLeading(viewModel: viewModel)
-            )
-            configureAccessoryHost(leadingHost)
-            let leadingController = NSTitlebarAccessoryViewController()
-            leadingController.view = leadingHost
-            leadingController.layoutAttribute = .left
-            window.addTitlebarAccessoryViewController(leadingController)
-            leadingAccessory = leadingController
-        }
+        guard !viewModel.isExpandedSidebarVisible else { return }
 
-        let toolbarHost = NSHostingView(
-            rootView: ExpandedTitleBarToolbar(
-                viewModel: viewModel,
-                onCompact: onCompact
-            )
+        let leadingHost = NSHostingView(
+            rootView: ExpandedTitleBarLeading(viewModel: viewModel)
         )
-        configureAccessoryHost(toolbarHost)
-        let toolbarController = NSTitlebarAccessoryViewController()
-        toolbarController.view = toolbarHost
-        toolbarController.layoutAttribute = .right
-        window.addTitlebarAccessoryViewController(toolbarController)
-        toolbarAccessory = toolbarController
+        configureAccessoryHost(leadingHost)
+        let leadingController = NSTitlebarAccessoryViewController()
+        leadingController.view = leadingHost
+        leadingController.layoutAttribute = .left
+        window.addTitlebarAccessoryViewController(leadingController)
+        leadingAccessory = leadingController
     }
 
     func uninstall(from window: NSWindow?) {
         guard let window else {
             leadingAccessory = nil
-            toolbarAccessory = nil
             return
         }
-        let ours: [NSTitlebarAccessoryViewController?] = [leadingAccessory, toolbarAccessory]
-        for index in window.titlebarAccessoryViewControllers.indices.reversed() {
-            let accessory = window.titlebarAccessoryViewControllers[index]
-            if ours.contains(where: { $0 === accessory }) {
-                window.removeTitlebarAccessoryViewController(at: index)
-            }
+        if let leadingAccessory,
+           let index = window.titlebarAccessoryViewControllers.firstIndex(where: { $0 === leadingAccessory }) {
+            window.removeTitlebarAccessoryViewController(at: index)
         }
-        leadingAccessory = nil
-        toolbarAccessory = nil
+        self.leadingAccessory = nil
     }
 
     private func configureAccessoryHost(_ host: NSHostingView<some View>) {
@@ -80,19 +57,5 @@ struct ExpandedTitleBarLeading: View {
             onToggleSidebar: { viewModel.toggleExpandedSidebar() }
         )
         .fixedSize()
-    }
-}
-
-struct ExpandedTitleBarToolbar: View {
-    @Bindable var viewModel: ChatViewModel
-    let onCompact: () -> Void
-
-    var body: some View {
-        HeaderToolbarActions(
-            viewModel: viewModel,
-            windowAction: .compact(action: onCompact),
-            glassMaterial: .titlebar
-        )
-        .padding(.trailing, 8)
     }
 }

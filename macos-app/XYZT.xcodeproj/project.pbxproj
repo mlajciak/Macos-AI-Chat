@@ -61,6 +61,7 @@
 		B1000066 /* ExpandedTitleBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000066 /* ExpandedTitleBarController.swift */; };
 		B1000067 /* MessageMarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000067 /* MessageMarkdownParser.swift */; };
 		B1000068 /* ExpandedSidebarColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000068 /* ExpandedSidebarColumn.swift */; };
+		B1000071 /* ExpandedDetailToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000071 /* ExpandedDetailToolbar.swift */; };
 		B1000070 /* CompactWindowAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000070 /* CompactWindowAnchor.swift */; };
 		B1000019 /* ModelSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000019 /* ModelSelectorView.swift */; };
 		B1000023 /* GlassSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000023 /* GlassSurface.swift */; };
@@ -148,6 +149,7 @@
 		F1000066 /* ExpandedTitleBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedTitleBarController.swift; sourceTree = "<group>"; };
 		F1000067 /* MessageMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownParser.swift; sourceTree = "<group>"; };
 		F1000068 /* ExpandedSidebarColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedSidebarColumn.swift; sourceTree = "<group>"; };
+		F1000071 /* ExpandedDetailToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedDetailToolbar.swift; sourceTree = "<group>"; };
 		F1000069 /* MessageMarkdownParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownParserTests.swift; sourceTree = "<group>"; };
 		F1000070 /* CompactWindowAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactWindowAnchor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -285,6 +287,7 @@
 				F1000060 /* JumpToBottomButton.swift */,
 				F1000064 /* ExpandedWindowLayout.swift */,
 				F1000068 /* ExpandedSidebarColumn.swift */,
+				F1000071 /* ExpandedDetailToolbar.swift */,
 				F1000065 /* SessionSidebarView.swift */,
 				F1000067 /* MessageMarkdownParser.swift */,
 			);
@@ -487,6 +490,7 @@
 				B1000063 /* OpenFolderGateView.swift in Sources */,
 				B1000064 /* ExpandedWindowLayout.swift in Sources */,
 				B1000068 /* ExpandedSidebarColumn.swift in Sources */,
+				B1000071 /* ExpandedDetailToolbar.swift in Sources */,
 				B1000070 /* CompactWindowAnchor.swift in Sources */,
 				B1000065 /* SessionSidebarView.swift in Sources */,
 				B1000067 /* MessageMarkdownParser.swift in Sources */,

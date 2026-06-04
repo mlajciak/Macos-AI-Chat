@@ -282,11 +282,7 @@ final class ChatWindowController: NSObject {
 
     private func syncExpandedTitleBar() {
         guard mode == .expanded, let window else { return }
-        expandedTitleBar.install(
-            on: window,
-            viewModel: viewModel,
-            onCompact: { [weak self] in self?.setMode(.compact) }
-        )
+        expandedTitleBar.install(on: window, viewModel: viewModel)
     }
 
     func snapCompactToAnchor(animate: Bool = false) {

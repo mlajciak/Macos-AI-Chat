@@ -24,6 +24,10 @@ enum FloatingChromeMetrics {
     static let expandedWindowTitlebarFallback: CGFloat = 28
     static let expandedSidebarToolbarBandHeight: CGFloat = 32
 
+    static var expandedDetailToolbarHeight: CGFloat {
+        expandedWindowTitlebarFallback + expandedSidebarToolbarBandHeight
+    }
+
     static let sidebarMinWidth: CGFloat = 220
     static let sidebarIdealWidth: CGFloat = 260
     static let sidebarMaxWidth: CGFloat = 320
@@ -50,7 +54,7 @@ enum FloatingChromeMetrics {
 
     static func headerScrollInset(expanded: Bool, externalTitleBar: Bool = false) -> CGFloat {
         if expanded && externalTitleBar {
-            return headerBottomPadding + chromeContentGap
+            return expandedDetailToolbarHeight + headerBottomPadding + chromeContentGap
         }
         return headerOverlayHeight(expanded: expanded)
     }
