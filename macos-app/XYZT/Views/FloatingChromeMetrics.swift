@@ -14,8 +14,10 @@ enum FloatingChromeMetrics {
     static let headerTopPadding: CGFloat = 10
     static let headerBottomPadding: CGFloat = 6
     static let headerBarHeight: CGFloat = 36
-    /// Single-line collapsed compact bar (chevron + title + window actions).
-    static let compactStripHeight: CGFloat = 40
+    /// Minimal pill shown when the compact panel collapses to one row.
+    static let compactStripHeight: CGFloat = 32
+    static let compactStripWidth: CGFloat = 72
+    static var compactStripCornerRadius: CGFloat { compactStripHeight / 2 }
     static let expandedTrafficLightInset: CGFloat = 28
     /// Leading band reserved for traffic lights (sidebar + collapsed detail).
     static let expandedTrafficLightsLeadingWidth: CGFloat = 78

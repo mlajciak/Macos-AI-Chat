@@ -61,7 +61,6 @@
 		B1000074 /* AppAccentPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000074 /* AppAccentPalette.swift */; };
 		B1000070 /* CompactWindowAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000070 /* CompactWindowAnchor.swift */; };
 		B1000075 /* CompactWindowHeaderDrag.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000075 /* CompactWindowHeaderDrag.swift */; };
-		B1000076 /* CompactPanelChromeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000076 /* CompactPanelChromeHost.swift */; };
 		B1000019 /* ModelSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000019 /* ModelSelectorView.swift */; };
 		B1000023 /* GlassSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000023 /* GlassSurface.swift */; };
 		B1000024 /* FloatingHeaderChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000024 /* FloatingHeaderChrome.swift */; };
@@ -149,7 +148,6 @@
 		F1000069 /* MessageMarkdownParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownParserTests.swift; sourceTree = "<group>"; };
 		F1000070 /* CompactWindowAnchor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactWindowAnchor.swift; sourceTree = "<group>"; };
 		F1000075 /* CompactWindowHeaderDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactWindowHeaderDrag.swift; sourceTree = "<group>"; };
-		F1000076 /* CompactPanelChromeHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactPanelChromeHost.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -262,7 +260,6 @@
 				F1000012 /* ChatInputBar.swift */,
 				F1000013 /* CompactHeaderView.swift */,
 				F1000014 /* ChatRootView.swift */,
-				F1000076 /* CompactPanelChromeHost.swift */,
 				F1000063 /* OpenFolderGateView.swift */,
 				F1000017 /* ConversationLayout.swift */,
 				F1000019 /* ModelSelectorView.swift */,
@@ -488,7 +485,6 @@
 				B1000064 /* ExpandedWindowLayout.swift in Sources */,
 				B1000070 /* CompactWindowAnchor.swift in Sources */,
 				B1000075 /* CompactWindowHeaderDrag.swift in Sources */,
-				B1000076 /* CompactPanelChromeHost.swift in Sources */,
 				B1000067 /* MessageMarkdownParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

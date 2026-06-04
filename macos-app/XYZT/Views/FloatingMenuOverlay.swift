@@ -28,7 +28,7 @@ struct FloatingMenuOverlay<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            SessionMenuBackdrop(material: glassMaterial)
+            SessionMenuBackdrop(material: glassMaterial, theme: theme)
 
             VStack(alignment: .leading, spacing: 0) {
                 menuHeader
@@ -50,7 +50,7 @@ struct FloatingMenuOverlay<Content: View>: View {
         HStack(alignment: .center, spacing: 8) {
             Text(title)
                 .appFont(.body, weight: .medium, settings: fontSettings)
-                .foregroundStyle(.primary)
+                .foregroundStyle(theme.primaryText)
 
             Spacer(minLength: 8)
 
@@ -73,9 +73,10 @@ struct FloatingMenuOverlay<Content: View>: View {
     }
 }
 
-/// Light frosted fill — blur only, minimal tint.
+/// Light frosted fill with hue-tinted highlight.
 struct SessionMenuBackdrop: View {
     let material: NSVisualEffectView.Material
+    let theme: AppThemeColors
 
     var body: some View {
         ZStack {
@@ -86,7 +87,7 @@ struct SessionMenuBackdrop: View {
             )
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.03),
+                    theme.chromeHighlight.opacity(0.85),
                     Color.clear,
                 ],
                 startPoint: .top,

@@ -19,18 +19,18 @@ struct ToolCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: iconName)
                         .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondary)
                         .frame(width: 16)
 
                     Text(card.title)
                         .font(fontSettings.font(for: .caption, weight: .medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(theme.primaryText)
 
                     Spacer(minLength: 4)
 
                     Image(systemName: "chevron.down")
                         .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(theme.secondaryMuted)
                         .rotationEffect(.degrees(card.isExpanded ? 0 : -90))
                 }
                 .padding(.horizontal, 10)
@@ -44,7 +44,7 @@ struct ToolCardView: View {
                     if card.body.isEmpty {
                         Text(isStreaming ? "Thinking…" : "No details")
                             .font(fontSettings.font(for: .caption))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.secondary)
                     } else {
                         MessageMarkdownView(
                             markdown: card.body,

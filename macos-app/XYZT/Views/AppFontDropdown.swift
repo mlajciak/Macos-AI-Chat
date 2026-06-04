@@ -65,13 +65,13 @@ struct AppDropdownTriggerLabel: View {
             if let icon {
                 Image(systemName: icon)
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondary)
                     .frame(width: 16, alignment: .center)
             }
 
             Text(title)
                 .font(fontSettings.font(for: .caption))
-                .foregroundStyle(.primary)
+                .foregroundStyle(theme.primaryText)
                 .lineLimit(1)
 
             Spacer(minLength: 4)
@@ -79,7 +79,7 @@ struct AppDropdownTriggerLabel: View {
             if showsChevron {
                 Image(systemName: "chevron.up.chevron.down")
                     .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.secondaryMuted)
             }
         }
         .padding(.horizontal, AppDropdownChrome.horizontalPadding)
@@ -110,7 +110,7 @@ struct AppDropdownRow: View {
                 if let icon {
                     Image(systemName: icon)
                         .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondary)
                         .frame(width: 16, alignment: .center)
                 }
 
@@ -119,7 +119,7 @@ struct AppDropdownRow: View {
                         titleLabel
                         Text(subtitle)
                             .font(fontSettings.font(size: max(fontSettings.captionPointSize - 1, 9)))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.secondary)
                             .lineLimit(1)
                     }
                 } else {
@@ -147,7 +147,7 @@ struct AppDropdownRow: View {
     private var titleLabel: some View {
         Text(title)
             .font(fontSettings.font(for: .caption))
-            .foregroundStyle(.primary)
+            .foregroundStyle(theme.primaryText)
             .lineLimit(1)
     }
 }
@@ -156,8 +156,4 @@ struct AppDropdownRow: View {
 
 enum AppDropdownChrome {
     static let horizontalPadding: CGFloat = 12
-
-    static var fieldFill: Color { AppThemeColors.default.fieldFill }
-
-    static var fieldStroke: Color { AppThemeColors.default.fieldStroke }
 }

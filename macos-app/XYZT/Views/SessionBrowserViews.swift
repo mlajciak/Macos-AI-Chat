@@ -5,6 +5,7 @@ import SwiftUI
 
 struct SessionPathMenu: View {
     @Bindable var viewModel: ChatViewModel
+    @Environment(\.appThemeColors) private var theme
 
     @State private var isMenuOpen = false
 
@@ -43,16 +44,16 @@ struct SessionPathMenu: View {
             HStack(spacing: 5) {
                 Image(systemName: "folder")
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                 Text(sessionPathText)
                     .font(fontSettings.font(for: .caption, weight: .medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .layoutPriority(1)
                 Image(systemName: "chevron.down")
                     .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.secondaryMuted)
             }
             .padding(.horizontal, 10)
             .frame(height: 28)
@@ -125,6 +126,7 @@ struct SessionProjectTree: View {
 struct OpenFolderMenuRow: View {
     let fontSettings: AppFontSettings
     let action: () -> Void
+    @Environment(\.appThemeColors) private var theme
 
     @State private var isHovered = false
 
@@ -133,12 +135,12 @@ struct OpenFolderMenuRow: View {
             HStack(spacing: 8) {
                 Image(systemName: "folder.badge.plus")
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondary)
                     .frame(width: 18)
 
                 Text("Open folder…")
                     .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
@@ -146,7 +148,7 @@ struct OpenFolderMenuRow: View {
             .padding(.horizontal, 10)
             .pillRow()
             .pillBackground(
-                fill: isHovered ? Color.primary.opacity(0.07) : Color.clear
+                fill: isHovered ? theme.hoverFill : Color.clear
             )
         }
         .buttonStyle(.plain)
@@ -165,6 +167,7 @@ struct ProjectFolderSection: View {
     let onSelect: (String) -> Void
     let onDelete: (String) -> Void
     let onNewChat: () -> Void
+    @Environment(\.appThemeColors) private var theme
 
     @State private var isFolderHovered = false
 
@@ -173,11 +176,11 @@ struct ProjectFolderSection: View {
             HStack(spacing: 6) {
                 Image(systemName: "folder.fill")
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondary)
 
                 Text(project.name)
                     .font(fontSettings.font(for: .caption, weight: .medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
@@ -196,7 +199,7 @@ struct ProjectFolderSection: View {
                                 Text("New chat")
                                     .font(fontSettings.font(for: .caption, weight: .medium))
                             }
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(theme.primaryText)
                             .padding(.horizontal, 8)
                             .frame(height: 26)
                         }
@@ -238,6 +241,7 @@ struct SessionTreeRow: View {
     let fontSettings: AppFontSettings
     let onSelect: () -> Void
     let onDelete: () -> Void
+    @Environment(\.appThemeColors) private var theme
 
     @State private var isHovered = false
 
@@ -248,7 +252,7 @@ struct SessionTreeRow: View {
             ZStack(alignment: .trailing) {
                 Text(thread.title)
                     .font(fontSettings.font(for: .caption, weight: isActive ? .semibold : .regular))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .mask(titleFadeMask)
@@ -287,7 +291,7 @@ struct SessionTreeRow: View {
         HStack(spacing: 6) {
             Text(SessionRelativeTime.label(since: thread.lastActiveAt))
                 .font(fontSettings.font(for: .caption))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondary)
                 .lineLimit(1)
 
             Button(role: .destructive, action: onDelete) {
@@ -317,10 +321,10 @@ struct SessionTreeRow: View {
 
     private var rowBackground: Color {
         if isActive {
-            return Color.primary.opacity(0.1)
+            return theme.accentSelectionFill
         }
         if isHovered {
-            return Color.primary.opacity(0.07)
+            return theme.hoverFill
         }
         return Color.clear
     }
@@ -332,6 +336,7 @@ struct SessionStatusIndicator: View {
     static let size: CGFloat = 9
 
     let isRunning: Bool
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         Group {
@@ -339,7 +344,7 @@ struct SessionStatusIndicator: View {
                 RunningDotsIndicator(compact: true)
             } else {
                 Circle()
-                    .fill(Color.secondary.opacity(0.4))
+                    .fill(theme.secondaryMuted)
                     .frame(width: 3, height: 3)
             }
         }
@@ -351,6 +356,7 @@ struct SessionStatusIndicator: View {
 
 struct RunningDotsIndicator: View {
     var compact: Bool = false
+    @Environment(\.appThemeColors) private var theme
 
     private let columns = 3
     private let rows = 2
@@ -367,7 +373,7 @@ struct RunningDotsIndicator: View {
             ) {
                 ForEach(0 ..< columns * rows, id: \.self) { index in
                     Circle()
-                        .fill(Color.primary.opacity(dotOpacity(index: index, tick: tick)))
+                        .fill(theme.primaryText.opacity(dotOpacity(index: index, tick: tick)))
                         .frame(width: dotSize, height: dotSize)
                 }
             }

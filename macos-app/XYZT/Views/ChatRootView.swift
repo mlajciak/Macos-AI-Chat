@@ -1,11 +1,10 @@
 import SwiftUI
 
-private let compactPanelCornerRadius: CGFloat = 12
-
 struct ChatRootView: View {
     @Bindable var viewModel: ChatViewModel
     let mode: WindowMode
     let compactPresentation: CompactPresentation
+    let isContentVisible: Bool
     let onExpand: () -> Void
     let onCompact: () -> Void
     let onRestoreCompactPanel: () -> Void
@@ -31,6 +30,7 @@ struct ChatRootView: View {
                 width: ChatWindowController.compactMaxSize.width,
                 height: ChatWindowController.compactMaxSize.height
             ),
+            collapseHeight: ChatWindowController.compactCollapseHeight,
             headerExclusionHeight: FloatingChromeMetrics.headerOverlayHeight(expanded: false),
             isStripMode: false,
             onResizeStarted: onCompactResizeStarted,
@@ -39,49 +39,34 @@ struct ChatRootView: View {
         )
     }
 
-    private var compactStripResizeConfig: CompactResizeOverlayConfig {
-        CompactResizeOverlayConfig(
-            anchor: viewModel.preferences.compactWindowAnchor,
-            minSize: NSSize(
-                width: ChatWindowController.compactMinSize.width,
-                height: ChatWindowController.compactStripSize.height
-            ),
-            maxSize: NSSize(
-                width: ChatWindowController.compactMaxSize.width,
-                height: ChatWindowController.compactStripSize.height
-            ),
-            headerExclusionHeight: 0,
-            isStripMode: true,
-            onResizeStarted: onCompactResizeStarted,
-            onResizeEnded: onCompactResizeEnded,
-            onCollapseToStrip: nil
-        )
-    }
-
-    private var theme: AppThemeColors {
-        AppAccentPalette.themeColors(
-            hue: viewModel.preferences.primaryColorHue,
-            spread: viewModel.preferences.primaryColorIntensity
-        )
-    }
+    private var theme: AppThemeColors { .default }
 
     var body: some View {
-        Group {
-            if mode == .expanded {
-                ExpandedWindowLayout(
-                    viewModel: viewModel,
-                    onCompact: onCompact
-                )
-            } else if isCompactStrip {
-                compactStripBody
-            } else {
-                compactBody
+        compactWindowChrome {
+            ZStack {
+                windowChromeBackground
+
+                Group {
+                    if mode == .expanded {
+                        ExpandedWindowLayout(
+                            viewModel: viewModel,
+                            onCompact: onCompact
+                        )
+                    } else if isCompactStrip {
+                        compactStripBody
+                    } else {
+                        compactBody
+                    }
+                }
             }
         }
+        .opacity(isContentVisible ? 1 : 0)
+        .allowsHitTesting(isContentVisible)
+        .animation(.easeOut(duration: 0.22), value: isContentVisible)
         .appAccentEnvironment(viewModel.preferences)
         .appMonoFont()
         .overlay {
-            if !isCompactStrip, viewModel.isSettingsOpen {
+            if isContentVisible, !isCompactStrip, viewModel.isSettingsOpen {
                 SettingsOverlay(
                     preferences: viewModel.preferences,
                     usesHudMaterial: true,
@@ -91,8 +76,6 @@ struct ChatRootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: viewModel.isSettingsOpen)
-        .animation(.easeInOut(duration: 0.22), value: compactPresentation)
-        .animation(.easeInOut(duration: 0.22), value: mode)
         .onChange(of: viewModel.preferences.menuModelIds) { _, _ in
             viewModel.syncSelectedModel()
         }
@@ -102,31 +85,78 @@ struct ChatRootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var compactStripBody: some View {
-        CompactPanelChromeHost(resizeConfig: compactStripResizeConfig) {
-            CompactStripBarView(
-                fontSettings: viewModel.preferences.fontSettings,
-                allowsHeaderDrag: viewModel.preferences.compactWindowAnchor == .floating,
-                onFloatingDragEnded: onFloatingDragEnded,
-                onRestorePanel: onRestoreCompactPanel,
-                onExpandWindow: onExpand,
-                onClose: onClose
-            )
-            .zIndex(2)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    @ViewBuilder
+    private func compactWindowChrome<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        if mode == .compact {
+            if isCompactStrip {
+                content()
+                    .clipShape(Capsule(style: .continuous))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(theme.overlayStroke, lineWidth: 1)
+                    }
+            } else {
+                content()
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: FloatingChromeMetrics.menuOverlayCornerRadius,
+                            style: .continuous
+                        )
+                    )
+                    .overlay {
+                        RoundedRectangle(
+                            cornerRadius: FloatingChromeMetrics.menuOverlayCornerRadius,
+                            style: .continuous
+                        )
+                        .strokeBorder(theme.overlayStroke, lineWidth: 1)
+                    }
+            }
+        } else {
+            content()
         }
-        .background {
+    }
+
+    @ViewBuilder
+    private var windowChromeBackground: some View {
+        if mode == .compact {
             VisualEffectBackground(
                 material: .hudWindow,
                 blendingMode: .behindWindow,
                 emphasized: false
             )
         }
-        .clipShape(RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous)
-                .strokeBorder(theme.overlayStroke, lineWidth: 1)
-        }
+    }
+
+    @ViewBuilder
+    private func compactResizeOverlayView(_ config: CompactResizeOverlayConfig) -> some View {
+        CompactWindowResizeOverlay(
+            anchor: config.anchor,
+            minSize: config.minSize,
+            maxSize: config.maxSize,
+            collapseHeight: config.collapseHeight,
+            headerExclusionHeight: config.headerExclusionHeight,
+            isStripMode: config.isStripMode,
+            onResizeStarted: config.onResizeStarted,
+            onResizeEnded: config.onResizeEnded,
+            onCollapseToStrip: config.onCollapseToStrip
+        )
+        .zIndex(1)
+    }
+
+    private var compactStripBody: some View {
+        CompactStripBarView(
+            fontSettings: viewModel.preferences.fontSettings,
+            allowsHeaderDrag: viewModel.preferences.compactWindowAnchor == .floating,
+            onFloatingDragEnded: onFloatingDragEnded,
+            onRestorePanel: onRestoreCompactPanel
+        )
+        .frame(
+            width: FloatingChromeMetrics.compactStripWidth,
+            height: FloatingChromeMetrics.compactStripHeight
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var compactBody: some View {
@@ -148,7 +178,8 @@ struct ChatRootView: View {
                             isExpanded: expanded
                         )
                     },
-                    usesHudMaterial: true
+                    usesHudMaterial: true,
+                    compactResizeConfig: compactPanelResizeConfig
                 ) {
                     CompactHeaderView(
                         viewModel: viewModel,
@@ -157,42 +188,29 @@ struct ChatRootView: View {
                         onFloatingDragEnded: onFloatingDragEnded
                     )
                 }
-                .compactResizeOverlay(compactPanelResizeConfig)
             } else {
-                CompactPanelChromeHost(resizeConfig: compactPanelResizeConfig) {
-                    ZStack(alignment: .top) {
-                        OpenFolderGateView(
-                            fontSettings: viewModel.preferences.fontSettings,
-                            onOpenFolder: { viewModel.openProjectFolder() }
-                        )
+                ZStack(alignment: .top) {
+                    compactResizeOverlayView(compactPanelResizeConfig)
 
-                        FloatingHeaderChrome(
-                            expanded: false,
-                            chromeBlurMaterial: FloatingChromeMetrics.chromeBlurMaterial(usesHudWindow: true)
-                        ) {
-                            CompactHeaderView(
-                                viewModel: viewModel,
-                                onExpand: onExpand,
-                                onClose: onClose
-                            )
-                        }
-                        .zIndex(2)
+                    OpenFolderGateView(
+                        fontSettings: viewModel.preferences.fontSettings,
+                        onOpenFolder: { viewModel.openProjectFolder() }
+                    )
+
+                    FloatingHeaderChrome(
+                        expanded: false,
+                        chromeBlurMaterial: FloatingChromeMetrics.chromeBlurMaterial(usesHudWindow: true)
+                    ) {
+                        CompactHeaderView(
+                            viewModel: viewModel,
+                            onExpand: onExpand,
+                            onClose: onClose
+                        )
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(2)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-        }
-        .background {
-            VisualEffectBackground(
-                material: .hudWindow,
-                blendingMode: .behindWindow,
-                emphasized: false
-            )
-        }
-        .clipShape(RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous)
-                .strokeBorder(theme.overlayStroke, lineWidth: 1)
         }
     }
 }

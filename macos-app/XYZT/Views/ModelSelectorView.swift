@@ -24,12 +24,12 @@ struct ModelSelectorView: View {
             HStack(spacing: 6) {
                 Text(selected?.name ?? "No models")
                     .font(fontSettings.font(for: .caption, weight: .medium))
-                    .foregroundStyle(models.isEmpty ? .tertiary : .primary)
+                    .foregroundStyle(models.isEmpty ? theme.secondaryMuted : theme.primaryText)
                     .lineLimit(1)
 
                 Image(systemName: "chevron.up.chevron.down")
                     .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.secondaryMuted)
             }
             .padding(.horizontal, 12)
             .pillRow(height: AppChrome.compactControlHeight)
@@ -43,7 +43,7 @@ struct ModelSelectorView: View {
             if models.isEmpty {
                 Text("Add models in Settings")
                     .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
             } else {

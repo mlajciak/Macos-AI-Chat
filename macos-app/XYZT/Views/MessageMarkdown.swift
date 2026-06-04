@@ -76,6 +76,7 @@ struct MessageMarkdownView: View {
                         text: item,
                         fontSettings: fontSettings,
                         secondary: secondary,
+                        markerColor: theme.secondary,
                         linkColor: linkColor,
                         codeBackground: inlineCodeBackground,
                         textColor: inlineTextColor
@@ -91,6 +92,7 @@ struct MessageMarkdownView: View {
                         text: item,
                         fontSettings: fontSettings,
                         secondary: secondary,
+                        markerColor: theme.secondary,
                         linkColor: linkColor,
                         codeBackground: inlineCodeBackground,
                         textColor: inlineTextColor
@@ -142,6 +144,7 @@ enum MessageMarkdown {
         text: String,
         fontSettings: AppFontSettings,
         secondary: Bool,
+        markerColor: Color,
         linkColor: NSColor = .controlAccentColor,
         codeBackground: NSColor = .secondaryLabelColor.withAlphaComponent(0.14),
         textColor: NSColor = .labelColor
@@ -149,7 +152,7 @@ enum MessageMarkdown {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(marker)
                 .font(fontSettings.font(for: .body, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(markerColor)
                 .frame(minWidth: marker.count > 1 ? 20 : 12, alignment: .trailing)
             inlineText(
                 text,

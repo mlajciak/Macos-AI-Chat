@@ -13,8 +13,8 @@ struct ConversationLayout<Header: View>: View {
     var onToolExpandedChange: ((String, String, Bool) -> Void)?
     var usesHudMaterial: Bool = false
     var usesExternalTitleBar: Bool = false
+    var compactResizeConfig: CompactResizeOverlayConfig? = nil
     @Environment(\.appFontSettings) private var fontSettings
-    @Environment(\.compactResizeOverlayConfig) private var compactResizeConfig
     @State private var isAtBottom = true
     @State private var scrollToBottomSignal = 0
     @ViewBuilder var header: () -> Header
@@ -57,6 +57,7 @@ struct ConversationLayout<Header: View>: View {
                     anchor: compactResizeConfig.anchor,
                     minSize: compactResizeConfig.minSize,
                     maxSize: compactResizeConfig.maxSize,
+                    collapseHeight: compactResizeConfig.collapseHeight,
                     headerExclusionHeight: compactResizeConfig.headerExclusionHeight,
                     isStripMode: compactResizeConfig.isStripMode,
                     onResizeStarted: compactResizeConfig.onResizeStarted,
@@ -135,7 +136,8 @@ extension ConversationLayout where Header == EmptyView {
         onStop: @escaping () -> Void,
         onToolExpandedChange: ((String, String, Bool) -> Void)? = nil,
         usesHudMaterial: Bool = false,
-        usesExternalTitleBar: Bool = false
+        usesExternalTitleBar: Bool = false,
+        compactResizeConfig: CompactResizeOverlayConfig? = nil
     ) {
         self._draft = draft
         self._selectedModelId = selectedModelId
@@ -148,6 +150,7 @@ extension ConversationLayout where Header == EmptyView {
         self.onToolExpandedChange = onToolExpandedChange
         self.usesHudMaterial = usesHudMaterial
         self.usesExternalTitleBar = usesExternalTitleBar
+        self.compactResizeConfig = compactResizeConfig
         self.header = { EmptyView() }
     }
 }

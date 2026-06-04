@@ -5,6 +5,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
     let anchor: CompactWindowAnchor
     let minSize: NSSize
     let maxSize: NSSize
+    var collapseHeight: CGFloat = ChatWindowController.compactCollapseHeight
     var headerExclusionHeight: CGFloat = 0
     var isStripMode: Bool = false
     var onResizeStarted: (() -> Void)?
@@ -16,6 +17,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
         view.anchor = anchor.resizeAnchor
         view.minSize = minSize
         view.maxSize = maxSize
+        view.collapseHeight = collapseHeight
         view.headerExclusionHeight = headerExclusionHeight
         view.isStripMode = isStripMode
         view.onResizeStarted = onResizeStarted
@@ -28,6 +30,7 @@ struct CompactWindowResizeOverlay: NSViewRepresentable {
         nsView.anchor = anchor.resizeAnchor
         nsView.minSize = minSize
         nsView.maxSize = maxSize
+        nsView.collapseHeight = collapseHeight
         nsView.headerExclusionHeight = headerExclusionHeight
         nsView.isStripMode = isStripMode
         nsView.onResizeStarted = onResizeStarted
@@ -41,6 +44,7 @@ final class CompactResizeTrackingView: NSView {
     var anchor: CompactWindowAnchor = .bottomRight
     var minSize = NSSize(width: 300, height: 380)
     var maxSize = NSSize(width: 560, height: 820)
+    var collapseHeight = ChatWindowController.compactCollapseHeight
     var headerExclusionHeight: CGFloat = 0
     var isStripMode = false
     var onResizeStarted: (() -> Void)?
@@ -107,9 +111,10 @@ final class CompactResizeTrackingView: NSView {
         }
 
         let rawHeight = resizeStartFrame.height + verticalDelta(dy)
-        if rawHeight < minSize.height {
+        if rawHeight < collapseHeight {
             isResizing = false
             onCollapseToStrip?()
+            onResizeEnded?()
             return
         }
 
@@ -320,6 +325,7 @@ struct CompactResizeOverlayConfig {
     let anchor: CompactWindowAnchor
     let minSize: NSSize
     let maxSize: NSSize
+    var collapseHeight: CGFloat = ChatWindowController.compactCollapseHeight
     let headerExclusionHeight: CGFloat
     let isStripMode: Bool
     var onResizeStarted: (() -> Void)?

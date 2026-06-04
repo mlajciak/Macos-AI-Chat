@@ -29,7 +29,7 @@ struct StreamingInputBorder: View {
             theme.accent.opacity(0.2),
             theme.accent.opacity(0.85),
             theme.accent,
-            AppAccentPalette.themedWhite(overlayOpacity: 0.55, hue: theme.hue, spread: theme.spread),
+            Color.white.opacity(0.55),
             theme.accent.opacity(0.5),
             theme.accent.opacity(0.2),
         ]

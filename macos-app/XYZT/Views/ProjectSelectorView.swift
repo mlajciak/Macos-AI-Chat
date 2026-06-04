@@ -27,17 +27,17 @@ struct ProjectSelectorView: View {
                         size: prominent ? fontSettings.iconPointSize + 1 : fontSettings.iconPointSize,
                         weight: .medium
                     ))
-                    .foregroundStyle(prominent ? .primary : .secondary)
+                    .foregroundStyle(prominent ? theme.primaryText : theme.secondary)
                 Text(selected.name)
                     .font(fontSettings.font(
                         for: prominent ? .headline : .caption,
                         weight: prominent ? .medium : .regular
                     ))
-                    .foregroundStyle(prominent ? .primary : .secondary)
+                    .foregroundStyle(prominent ? theme.primaryText : theme.secondary)
                     .lineLimit(1)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.tertiary)
             }
             .padding(.horizontal, 12)
             .pillRow(height: controlHeight)

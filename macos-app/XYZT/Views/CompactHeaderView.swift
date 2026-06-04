@@ -61,14 +61,13 @@ struct CompactHeaderView: View {
     }
 }
 
-/// One-line compact bar shown when the panel is collapsed below minimum height.
+/// Minimal pill shown when the compact panel collapses; tap to restore the chat panel.
 struct CompactStripBarView: View {
     let fontSettings: AppFontSettings
     let allowsHeaderDrag: Bool
-    let onFloatingDragEnded: (() -> Void)?
+    var onFloatingDragEnded: (() -> Void)?
     let onRestorePanel: () -> Void
-    let onExpandWindow: () -> Void
-    let onClose: () -> Void
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         ZStack {
@@ -78,42 +77,20 @@ struct CompactStripBarView: View {
                     onDragEnded: onFloatingDragEnded
                 )
 
-            HStack(alignment: .center, spacing: 8) {
-                HeaderToolbarIconButton(
-                    systemImage: "chevron.up",
-                    tooltip: "Expand chat panel",
-                    fontSettings: fontSettings,
-                    weight: .semibold
-                ) {
-                    onRestorePanel()
-                }
-
+            Button(action: onRestorePanel) {
                 Text(AppBranding.name)
-                    .appFont(.caption, weight: .medium, settings: fontSettings)
-                    .foregroundStyle(.primary)
+                    .font(fontSettings.font(for: .caption, weight: .semibold))
+                    .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
-
-                Spacer(minLength: 4)
-
-                HeaderToolbarIconButton(
-                    systemImage: "arrow.up.left.and.arrow.down.right",
-                    tooltip: "Expand window",
-                    fontSettings: fontSettings
-                ) {
-                    onExpandWindow()
-                }
-
-                HeaderToolbarIconButton(
-                    systemImage: "xmark",
-                    tooltip: "Hide \(AppBranding.name)",
-                    fontSettings: fontSettings,
-                    weight: .semibold
-                ) {
-                    onClose()
-                }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 10)
+            .buttonStyle(.plain)
+            .macTooltip("Open \(AppBranding.name)")
+            .accessibilityLabel("Open \(AppBranding.name)")
         }
-        .frame(height: FloatingChromeMetrics.compactStripHeight)
+        .frame(
+            width: FloatingChromeMetrics.compactStripWidth,
+            height: FloatingChromeMetrics.compactStripHeight
+        )
     }
 }

@@ -74,7 +74,7 @@ struct ChatInputBar: View {
             if draft.isEmpty {
                 Text("What do you want to make?")
                     .font(fontSettings.font(for: .body))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.tertiary)
                     .padding(.top, 2)
                     .allowsHitTesting(false)
             }

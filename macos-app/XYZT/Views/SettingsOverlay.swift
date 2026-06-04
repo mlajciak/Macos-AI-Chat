@@ -139,6 +139,7 @@ struct SettingsPanelContent: View {
     var usesHudMaterial: Bool = false
 
     @State private var expandedCategories: Set<SettingsCategory> = [.openRouter]
+    @Environment(\.appThemeColors) private var theme
 
     private var fontSettings: AppFontSettings { preferences.fontSettings }
 
@@ -155,7 +156,9 @@ struct SettingsPanelContent: View {
                     }
 
                     if category != SettingsCategory.allCases.last {
-                        Divider().opacity(0.35)
+                        Rectangle()
+                            .fill(theme.divider)
+                            .frame(height: 1)
                     }
                 }
             }
@@ -218,6 +221,7 @@ private struct SettingsCollapsibleCategory<Content: View>: View {
     let fontSettings: AppFontSettings
     @Binding var isExpanded: Bool
     @ViewBuilder let content: () -> Content
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -227,18 +231,18 @@ private struct SettingsCollapsibleCategory<Content: View>: View {
                 HStack(spacing: 8) {
                     Image(systemName: category.systemImage)
                         .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondary)
                         .frame(width: 18)
 
                     Text(category.title)
                         .font(fontSettings.font(for: .body, weight: .medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(theme.primaryText)
 
                     Spacer(minLength: 4)
 
                     Image(systemName: "chevron.down")
                         .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(theme.secondaryMuted)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
                 .padding(.vertical, 6)
@@ -262,10 +266,7 @@ private struct CompactWindowSettingsSection: View {
     @Bindable var preferences: AppPreferences
     let fontSettings: AppFontSettings
     var usesHudMaterial: Bool = false
-
-    private var glassMaterial: NSVisualEffectView.Material {
-        usesHudMaterial ? .hudWindow : .popover
-    }
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -276,14 +277,13 @@ private struct CompactWindowSettingsSection: View {
                         : "Where the compact chat panel sits on your display."
                 )
                 .font(fontSettings.font(for: .caption))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             }
 
             CompactWindowAnchorPicker(
                 selection: $preferences.compactWindowAnchor,
-                fontSettings: fontSettings,
-                glassMaterial: glassMaterial
+                fontSettings: fontSettings
             )
         }
     }
@@ -292,7 +292,6 @@ private struct CompactWindowSettingsSection: View {
 private struct CompactWindowAnchorPicker: View {
     @Binding var selection: CompactWindowAnchor
     let fontSettings: AppFontSettings
-    let glassMaterial: NSVisualEffectView.Material
     @Environment(\.appThemeColors) private var theme
 
     private let columns = [
@@ -330,13 +329,10 @@ private struct CompactWindowAnchorPicker: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
+            .foregroundStyle(selection == anchor ? theme.accent : theme.primaryText)
             .background {
-                if selection == anchor {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(theme.accentSelectionFill)
-                } else {
-                    GlassSurface.sessionMenu(material: glassMaterial)
-                }
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(selection == anchor ? theme.accentSelectionFill : theme.fieldFill)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -368,20 +364,6 @@ private struct AppearanceSettingsSection: View {
                     selection: $preferences.theme,
                     fontSettings: fontSettings,
                     glassMaterial: glassMaterial
-                )
-            }
-
-            SettingsFieldRow(label: "Hue", fontSettings: fontSettings) {
-                HueSettingsControl(
-                    hue: $preferences.primaryColorHue,
-                    fontSettings: fontSettings
-                )
-            }
-
-            SettingsFieldRow(label: "Intensity", fontSettings: fontSettings) {
-                ColorSpreadSettingsControl(
-                    spread: $preferences.primaryColorIntensity,
-                    fontSettings: fontSettings
                 )
             }
 
@@ -441,7 +423,7 @@ private struct OpenRouterSettingsSection: View {
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
                             .font(fontSettings.font(for: .caption))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.tertiary)
 
                         TextField("Search models", text: $searchQuery)
                             .textFieldStyle(.plain)
@@ -458,7 +440,7 @@ private struct OpenRouterSettingsSection: View {
                     HStack {
                         Text(statusText)
                             .font(fontSettings.font(for: .caption))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.secondary)
                         Spacer()
                         Button("Refresh") {
                             Task { await loadModels() }
@@ -611,11 +593,11 @@ private struct OpenRouterModelListPanel: View {
         case .loaded:
             Text("No models match your search.")
                 .font(fontSettings.font(for: .caption))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(theme.tertiary)
         case .idle, .failed:
             Text(idleOrErrorMessage)
                 .font(fontSettings.font(for: .caption))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(theme.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 8)
         default:
@@ -653,11 +635,11 @@ private struct OpenRouterModelRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(model.name)
                         .font(fontSettings.font(for: .caption, weight: .medium))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(theme.primaryText)
                         .lineLimit(1)
                     Text(model.id)
                         .font(fontSettings.font(size: max(fontSettings.captionPointSize - 1, 9)))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondary)
                         .lineLimit(1)
                 }
 
@@ -703,7 +685,7 @@ private struct ChatTitleModelSettingsSection: View {
             SettingsFieldRow(label: "Chat title generation", fontSettings: fontSettings) {
                 Text("After your first message, the app can ask OpenRouter for a short session title.")
                     .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -744,7 +726,7 @@ private struct ChatTitleModelSettingsSection: View {
             } else {
                 Text("Uses the model selected in the chat input. If none is selected, the first message is truncated for the title.")
                     .font(fontSettings.font(for: .caption))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -757,12 +739,13 @@ private struct SettingsFieldRow<Content: View>: View {
     let label: String
     let fontSettings: AppFontSettings
     @ViewBuilder var content: () -> Content
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
                 .font(fontSettings.font(for: .caption, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondary)
 
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -800,55 +783,6 @@ private struct ThemeSettingsPicker: View {
     }
 }
 
-// MARK: - Hue & spread
-
-private struct HueSettingsControl: View {
-    @Binding var hue: Double
-    let fontSettings: AppFontSettings
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Slider(value: $hue, in: 0 ... 1, step: 0.01)
-
-            HueColorSwatch(hue: hue)
-                .frame(minWidth: 34, alignment: .trailing)
-        }
-        .padding(.horizontal, AppDropdownChrome.horizontalPadding)
-        .pillRow()
-        .pillBackground(
-            fill: theme.fieldFill,
-            stroke: theme.fieldStroke
-        )
-    }
-
-    @Environment(\.appThemeColors) private var theme
-}
-
-private struct ColorSpreadSettingsControl: View {
-    @Binding var spread: Double
-    let fontSettings: AppFontSettings
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Slider(value: $spread, in: 0 ... 1, step: 0.01)
-
-            Text("\(Int((spread * 100).rounded()))%")
-                .font(fontSettings.font(for: .caption))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 34, alignment: .trailing)
-        }
-        .padding(.horizontal, AppDropdownChrome.horizontalPadding)
-        .pillRow()
-        .pillBackground(
-            fill: theme.fieldFill,
-            stroke: theme.fieldStroke
-        )
-    }
-
-    @Environment(\.appThemeColors) private var theme
-}
-
 // MARK: - Font size
 
 private struct FontSizeSettingsControl: View {
@@ -862,7 +796,7 @@ private struct FontSizeSettingsControl: View {
             Text("\(Int(pointSize)) pt")
                 .font(fontSettings.font(for: .caption))
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondary)
                 .frame(minWidth: 34, alignment: .trailing)
         }
         .padding(.horizontal, AppDropdownChrome.horizontalPadding)

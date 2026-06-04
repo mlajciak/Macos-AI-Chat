@@ -6,20 +6,25 @@ import SwiftUI
 final class ChatWindowController: NSObject {
     static let compactDefaultSize = NSSize(width: 360, height: 520)
     static let compactMinSize = NSSize(width: 300, height: 380)
+    /// Drag below this height (while in the panel) to snap to the one-row strip.
+    static let compactCollapseHeight: CGFloat = 220
     static let compactMaxSize = NSSize(width: 560, height: 820)
+    private static let transitionHideDelay: TimeInterval = 0.08
+    private static let transitionRevealDelay: TimeInterval = 0.14
     static let expandedDefaultSize = NSSize(width: 720, height: 840)
     static let expandedMinSize = NSSize(width: 480, height: 640)
     static let screenInset: CGFloat = 24
 
     static var compactStripSize: NSSize {
         NSSize(
-            width: compactMinSize.width,
+            width: FloatingChromeMetrics.compactStripWidth,
             height: FloatingChromeMetrics.compactStripHeight
         )
     }
 
     private(set) var mode: WindowMode = .compact
     private(set) var compactPresentation: CompactPresentation = .panel
+    private(set) var isWindowContentVisible = true
     private var window: NSWindow?
     private var hostingView: NSHostingView<ChatRootView>?
     private var savedExpandedFrame: NSRect?
@@ -66,35 +71,36 @@ final class ChatWindowController: NSObject {
 
         viewModel.closeOverlays()
 
-        if newMode == .expanded {
-            savedCompactPanelSize = window.frame.size
-            mode = .expanded
-            compactPresentation = .panel
-            applyExpandedChrome()
-            if let saved = savedExpandedFrame {
-                window.setFrame(saved, display: true, animate: true)
+        performWindowTransition(animateFrame: true) {
+            if newMode == .expanded {
+                self.savedCompactPanelSize = window.frame.size
+                self.mode = .expanded
+                self.compactPresentation = .panel
+                self.applyExpandedChrome()
+                if let saved = self.savedExpandedFrame {
+                    window.setFrame(saved, display: true, animate: true)
+                } else {
+                    self.centerExpanded(window)
+                }
+                NSApp.setActivationPolicy(.regular)
             } else {
-                centerExpanded(window)
+                self.savedExpandedFrame = window.frame
+                self.mode = .compact
+                self.compactPresentation = .panel
+                self.applyCompactChrome()
+                if let saved = self.savedCompactPanelSize {
+                    self.resizeCompactWindow(
+                        to: NSSize(
+                            width: min(max(saved.width, Self.compactMinSize.width), Self.compactMaxSize.width),
+                            height: min(max(saved.height, Self.compactMinSize.height), Self.compactMaxSize.height)
+                        ),
+                        animate: true
+                    )
+                }
+                self.snapCompactToAnchor(animate: true)
             }
-            NSApp.setActivationPolicy(.regular)
-        } else {
-            savedExpandedFrame = window.frame
-            mode = .compact
-            compactPresentation = .panel
-            applyCompactChrome()
-            if let saved = savedCompactPanelSize {
-                resizeCompactWindow(
-                    to: NSSize(
-                        width: min(max(saved.width, Self.compactMinSize.width), Self.compactMaxSize.width),
-                        height: min(max(saved.height, Self.compactMinSize.height), Self.compactMaxSize.height)
-                    ),
-                    animate: true
-                )
-            }
-            snapCompactToAnchor(animate: true)
+            self.refreshContent()
         }
-
-        refreshContent()
     }
 
     func collapseToStrip() {
@@ -102,45 +108,43 @@ final class ChatWindowController: NSObject {
         guard !isCollapsingToStrip else { return }
 
         isCollapsingToStrip = true
-        defer { isCollapsingToStrip = false }
-
         isUserResizingCompact = false
         savedCompactPanelSize = window.frame.size
-        compactPresentation = .strip
         viewModel.closeOverlays()
 
-        isApplyingChrome = true
-        applyCompactSizeLimits(for: .strip)
-        resizeCompactWindow(
-            to: NSSize(
-                width: window.frame.width,
-                height: Self.compactStripSize.height
-            ),
-            animate: false
-        )
-        isApplyingChrome = false
-        refreshContent()
-        snapCompactToAnchor(animate: false)
+        performWindowTransition(animateFrame: false) {
+            self.compactPresentation = .strip
+            self.isApplyingChrome = true
+            self.applyCompactSizeLimits(for: .strip)
+            self.resizeCompactWindow(to: Self.compactStripSize, animate: false)
+            self.isApplyingChrome = false
+            self.applyCompactWindowMask()
+            self.snapCompactToAnchor(animate: false)
+            self.refreshContent()
+            self.isCollapsingToStrip = false
+        }
     }
 
     func restoreCompactPanel() {
         guard mode == .compact, compactPresentation == .strip, let window else { return }
 
-        compactPresentation = .panel
-
-        isApplyingChrome = true
-        applyCompactSizeLimits(for: .panel)
-        let restored = savedCompactPanelSize ?? Self.compactDefaultSize
-        resizeCompactWindow(
-            to: NSSize(
-                width: min(max(restored.width, Self.compactMinSize.width), Self.compactMaxSize.width),
-                height: min(max(restored.height, Self.compactMinSize.height), Self.compactMaxSize.height)
-            ),
-            animate: true
-        )
-        isApplyingChrome = false
-        refreshContent()
-        snapCompactToAnchor(animate: true)
+        performWindowTransition(animateFrame: true) {
+            self.compactPresentation = .panel
+            self.isApplyingChrome = true
+            self.applyCompactSizeLimits(for: .panel)
+            let restored = self.savedCompactPanelSize ?? Self.compactDefaultSize
+            self.resizeCompactWindow(
+                to: NSSize(
+                    width: min(max(restored.width, Self.compactMinSize.width), Self.compactMaxSize.width),
+                    height: min(max(restored.height, Self.compactMinSize.height), Self.compactMaxSize.height)
+                ),
+                animate: true
+            )
+            self.isApplyingChrome = false
+            self.applyCompactWindowMask()
+            self.snapCompactToAnchor(animate: true)
+            self.refreshContent()
+        }
     }
 
     func hideWindow() {
@@ -164,11 +168,29 @@ final class ChatWindowController: NSObject {
         installContent()
     }
 
+    private func performWindowTransition(
+        animateFrame: Bool,
+        _ changes: @escaping () -> Void
+    ) {
+        isWindowContentVisible = false
+        refreshContent()
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(Self.transitionHideDelay * 1_000_000_000))
+            changes()
+            let revealDelay = animateFrame ? Self.transitionRevealDelay : Self.transitionHideDelay
+            try? await Task.sleep(nanoseconds: UInt64(revealDelay * 1_000_000_000))
+            isWindowContentVisible = true
+            refreshContent()
+        }
+    }
+
     private func makeRootView() -> ChatRootView {
         ChatRootView(
             viewModel: viewModel,
             mode: mode,
             compactPresentation: compactPresentation,
+            isContentVisible: isWindowContentVisible,
             onExpand: { [weak self] in self?.setMode(.expanded) },
             onCompact: { [weak self] in self?.setMode(.compact) },
             onRestoreCompactPanel: { [weak self] in self?.restoreCompactPanel() },
@@ -227,6 +249,7 @@ final class ChatWindowController: NSObject {
         window.hasShadow = true
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
+        applyCompactWindowMask()
         snapCompactToAnchor()
     }
 
@@ -241,14 +264,8 @@ final class ChatWindowController: NSObject {
             )
             window.maxSize = Self.compactMaxSize
         case .strip:
-            window.minSize = NSSize(
-                width: Self.compactMinSize.width,
-                height: Self.compactStripSize.height
-            )
-            window.maxSize = NSSize(
-                width: Self.compactMaxSize.width,
-                height: Self.compactStripSize.height
-            )
+            window.minSize = Self.compactStripSize
+            window.maxSize = Self.compactStripSize
         }
     }
 
@@ -302,6 +319,24 @@ final class ChatWindowController: NSObject {
             )
         }
 
+        clearCompactWindowMask()
+    }
+
+    private func applyCompactWindowMask() {
+        guard mode == .compact, let hostingView else { return }
+        hostingView.wantsLayer = true
+        let radius = compactPresentation == .strip
+            ? FloatingChromeMetrics.compactStripCornerRadius
+            : FloatingChromeMetrics.menuOverlayCornerRadius
+        hostingView.layer?.cornerRadius = radius
+        hostingView.layer?.cornerCurve = .continuous
+        hostingView.layer?.masksToBounds = true
+    }
+
+    private func clearCompactWindowMask() {
+        guard let hostingView else { return }
+        hostingView.layer?.cornerRadius = 0
+        hostingView.layer?.masksToBounds = false
     }
 
     func snapCompactToAnchor(animate: Bool = false) {
@@ -385,17 +420,13 @@ extension ChatWindowController: NSWindowDelegate {
               !isCollapsingToStrip
         else { return frame }
 
-        guard frame.height < Self.compactMinSize.height else { return frame }
+        guard frame.height < Self.compactCollapseHeight else { return frame }
 
         let anchor = viewModel.preferences.compactWindowAnchor
         let pinned = anchor.pinnedCorner(in: sender.frame)
-        let width = min(
-            max(frame.width, Self.compactMinSize.width),
-            Self.compactMaxSize.width
-        )
         let stripFrame = anchor.frame(
             pinnedTo: pinned,
-            size: NSSize(width: width, height: Self.compactStripSize.height)
+            size: Self.compactStripSize
         )
 
         collapseToStrip()
@@ -405,7 +436,18 @@ extension ChatWindowController: NSWindowDelegate {
     func windowDidResize(_ notification: Notification) {
         hostingView?.needsLayout = true
         hostingView?.layoutSubtreeIfNeeded()
-        guard !isApplyingChrome, !isUserResizingCompact, mode == .compact else { return }
+        guard mode == .compact, let window else { return }
+
+        if compactPresentation == .panel,
+           window.frame.height < Self.compactCollapseHeight,
+           !isApplyingChrome,
+           !isCollapsingToStrip
+        {
+            collapseToStrip()
+            return
+        }
+
+        guard !isApplyingChrome, !isUserResizingCompact else { return }
         finishCompactGeometryChange()
     }
 

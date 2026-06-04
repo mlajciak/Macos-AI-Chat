@@ -123,13 +123,14 @@ struct HeaderToolbarIconButton: View {
     var weight: AppTypography.Weight = .medium
     var glassMaterial: NSVisualEffectView.Material = .hudWindow
     let action: () -> Void
+    @Environment(\.appThemeColors) private var theme
 
     var body: some View {
         Button(action: action) {
             HeaderToolbarGlassChip(shape: .circle, material: glassMaterial) {
                 Image(systemName: systemImage)
                     .font(fontSettings.font(size: fontSettings.iconPointSize, weight: weight))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                     .frame(width: 28, height: 28)
             }
         }

@@ -21,8 +21,8 @@ struct GlassSurface: View {
             shape.fill(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(topHighlightOpacity),
-                        Color.white.opacity(bottomHighlightOpacity),
+                        theme.chromeHighlightHover.opacity(topHighlightOpacity / 0.14),
+                        theme.chromeHighlight.opacity(bottomHighlightOpacity / 0.04),
                         Color.clear,
                     ],
                     startPoint: .top,
@@ -31,17 +31,14 @@ struct GlassSurface: View {
             )
             .blendMode(.plusLighter)
 
-            if theme.glassTintOpacity > 0.001 {
-                shape.fill(theme.accent.opacity(theme.glassTintOpacity))
-            }
         }
         .clipShape(shape)
         .overlay {
             shape.strokeBorder(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(borderTopOpacity),
-                        Color.white.opacity(borderBottomOpacity),
+                        theme.chromeHighlightHover.opacity(borderTopOpacity / 0.35),
+                        theme.chromeHighlight.opacity(borderBottomOpacity / 0.08),
                         theme.fieldStroke,
                     ],
                     startPoint: .top,
@@ -66,6 +63,8 @@ struct GlassChromeBackground: View {
     var shape: GlassChromeShape = .circle
     var isHovered: Bool = false
 
+    @Environment(\.appThemeColors) private var theme
+
     private var topHighlight: CGFloat { isHovered ? 0.2 : 0.14 }
     private var bottomHighlight: CGFloat { isHovered ? 0.06 : 0.03 }
     private var borderTop: CGFloat { isHovered ? 0.42 : 0.32 }
@@ -74,16 +73,16 @@ struct GlassChromeBackground: View {
     var body: some View {
         let fillGradient = LinearGradient(
             colors: [
-                Color.white.opacity(topHighlight),
-                Color.white.opacity(bottomHighlight),
+                theme.chromeHighlightHover.opacity(isHovered ? 1 : 0.85),
+                theme.chromeHighlight.opacity(isHovered ? 0.5 : 0.35),
             ],
             startPoint: .top,
             endPoint: .bottom
         )
         let borderGradient = LinearGradient(
             colors: [
-                Color.white.opacity(borderTop),
-                Color.white.opacity(borderBottom),
+                theme.chromeHighlightHover.opacity(borderTop),
+                theme.fieldStroke,
             ],
             startPoint: .top,
             endPoint: .bottom
