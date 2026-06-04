@@ -2,46 +2,60 @@ import SwiftUI
 
 struct ProjectSelectorView: View {
     @Binding var selectedProjectId: String
+    let fontSettings: AppFontSettings
     var prominent: Bool = false
 
     private var selected: Project {
         ProjectCatalog.project(id: selectedProjectId)
     }
 
+    private var controlHeight: CGFloat {
+        prominent ? AppChrome.rowHeight : AppChrome.compactControlHeight
+    }
+
     var body: some View {
-        Menu {
-            ForEach(ProjectCatalog.demo) { project in
-                Button {
-                    selectedProjectId = project.id
-                } label: {
-                    HStack {
-                        Text(project.name)
-                            .font(AppTypography.mono(size: AppTypography.captionSize))
-                        Spacer()
-                        if project.id == selectedProjectId {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
+        AppFontDropdown(
+            fontSettings: fontSettings,
+            fullWidth: false,
+            tooltip: "Switch project"
+        ) {
             HStack(spacing: prominent ? 6 : 4) {
                 Image(systemName: "folder")
-                    .font(.system(size: prominent ? 12 : 10, weight: .medium))
+                    .font(fontSettings.font(
+                        size: prominent ? fontSettings.iconPointSize + 1 : fontSettings.iconPointSize,
+                        weight: .medium
+                    ))
                     .foregroundStyle(prominent ? .primary : .secondary)
                 Text(selected.name)
-                    .font(AppTypography.mono(
-                        size: prominent ? AppTypography.headlineSize : AppTypography.captionSize,
+                    .font(fontSettings.font(
+                        for: prominent ? .headline : .caption,
                         weight: prominent ? .medium : .regular
                     ))
                     .foregroundStyle(prominent ? .primary : .secondary)
                     .lineLimit(1)
                 Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: prominent ? 9 : 8, weight: .semibold))
+                    .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
                     .foregroundStyle(.tertiary)
             }
+            .padding(.horizontal, 12)
+            .pillRow(height: controlHeight)
+            .pillBackground(
+                height: controlHeight,
+                fill: AppDropdownChrome.fieldFill,
+                stroke: AppDropdownChrome.fieldStroke
+            )
+        } menuContent: { close in
+            ForEach(ProjectCatalog.demo) { project in
+                AppDropdownRow(
+                    icon: "folder",
+                    title: project.name,
+                    fontSettings: fontSettings,
+                    isSelected: project.id == selectedProjectId
+                ) {
+                    selectedProjectId = project.id
+                    close()
+                }
+            }
         }
-        .menuStyle(.borderlessButton)
-        .help("Switch project")
     }
 }

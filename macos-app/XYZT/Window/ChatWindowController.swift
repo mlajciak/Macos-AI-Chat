@@ -11,14 +11,27 @@ final class ChatWindowController: NSObject {
     static let expandedMinSize = NSSize(width: 480, height: 640)
     static let screenInset: CGFloat = 24
 
+    static var compactStripSize: NSSize {
+        NSSize(
+            width: compactMinSize.width,
+            height: FloatingChromeMetrics.compactStripHeight
+        )
+    }
+
     private(set) var mode: WindowMode = .compact
+    private(set) var compactPresentation: CompactPresentation = .panel
     private var window: NSWindow?
     private var hostingView: NSHostingView<ChatRootView>?
     private var savedExpandedFrame: NSRect?
+    private var savedCompactPanelSize: NSSize?
     private var isApplyingChrome = false
     private var isUserResizingCompact = false
 
     let viewModel = ChatViewModel()
+
+    var isCompactStrip: Bool {
+        mode == .compact && compactPresentation == .strip
+    }
 
     func show() {
         if let window {
@@ -57,6 +70,7 @@ final class ChatWindowController: NSObject {
 
         if newMode == .expanded {
             mode = .expanded
+            compactPresentation = .panel
             applyExpandedChrome()
             if let saved = savedExpandedFrame {
                 window.setFrame(saved, display: true, animate: true)
@@ -67,12 +81,54 @@ final class ChatWindowController: NSObject {
         } else {
             savedExpandedFrame = window.frame
             mode = .compact
+            compactPresentation = .panel
             applyCompactChrome()
             snapCompactToBottomRight(animate: true)
             NSApp.setActivationPolicy(.accessory)
         }
 
         refreshContent()
+    }
+
+    func collapseToStrip() {
+        guard mode == .compact, compactPresentation == .panel, let window else { return }
+
+        savedCompactPanelSize = window.frame.size
+        compactPresentation = .strip
+        viewModel.closeOverlays()
+
+        isApplyingChrome = true
+        applyCompactSizeLimits(for: .strip)
+        resizeCompactWindow(
+            to: NSSize(
+                width: window.frame.width,
+                height: Self.compactStripSize.height
+            ),
+            animate: true
+        )
+        isApplyingChrome = false
+        refreshContent()
+        snapCompactToBottomRight(animate: true)
+    }
+
+    func restoreCompactPanel() {
+        guard mode == .compact, compactPresentation == .strip, let window else { return }
+
+        compactPresentation = .panel
+
+        isApplyingChrome = true
+        applyCompactSizeLimits(for: .panel)
+        let restored = savedCompactPanelSize ?? Self.compactDefaultSize
+        resizeCompactWindow(
+            to: NSSize(
+                width: min(max(restored.width, Self.compactMinSize.width), Self.compactMaxSize.width),
+                height: min(max(restored.height, Self.compactMinSize.height), Self.compactMaxSize.height)
+            ),
+            animate: true
+        )
+        isApplyingChrome = false
+        refreshContent()
+        snapCompactToBottomRight(animate: true)
     }
 
     func hideWindow() {
@@ -100,14 +156,17 @@ final class ChatWindowController: NSObject {
         ChatRootView(
             viewModel: viewModel,
             mode: mode,
+            compactPresentation: compactPresentation,
             onExpand: { [weak self] in self?.setMode(.expanded) },
             onCompact: { [weak self] in self?.setMode(.compact) },
+            onRestoreCompactPanel: { [weak self] in self?.restoreCompactPanel() },
             onClose: { [weak self] in self?.hideWindow() },
             onCompactResizeStarted: { [weak self] in self?.isUserResizingCompact = true },
             onCompactResizeEnded: { [weak self] in
                 self?.isUserResizingCompact = false
                 self?.snapCompactToBottomRight()
-            }
+            },
+            onCollapseToStrip: { [weak self] in self?.collapseToStrip() }
         )
     }
 
@@ -126,17 +185,47 @@ final class ChatWindowController: NSObject {
         window.level = .floating
         window.isMovable = false
         window.isMovableByWindowBackground = false
-        window.minSize = Self.compactMinSize
-        window.maxSize = Self.compactMaxSize
+        applyCompactSizeLimits(for: compactPresentation)
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = true
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        var frame = window.frame
-        frame.size = Self.compactDefaultSize
-        window.setFrame(frame, display: false)
+        if compactPresentation == .panel {
+            var frame = window.frame
+            frame.size = Self.compactDefaultSize
+            window.setFrame(frame, display: false)
+        }
         snapCompactToBottomRight()
+    }
+
+    private func applyCompactSizeLimits(for presentation: CompactPresentation) {
+        guard let window else { return }
+        switch presentation {
+        case .panel:
+            window.minSize = Self.compactMinSize
+            window.maxSize = Self.compactMaxSize
+        case .strip:
+            window.minSize = NSSize(
+                width: Self.compactMinSize.width,
+                height: Self.compactStripSize.height
+            )
+            window.maxSize = NSSize(
+                width: Self.compactMaxSize.width,
+                height: Self.compactStripSize.height
+            )
+        }
+    }
+
+    private func resizeCompactWindow(to size: NSSize, animate: Bool) {
+        guard let window else { return }
+        let anchorRight = window.frame.maxX
+        let anchorBottom = window.frame.minY
+        var frame = window.frame
+        frame.size = size
+        frame.origin.x = anchorRight - frame.width
+        frame.origin.y = anchorBottom
+        window.setFrame(frame, display: true, animate: animate)
     }
 
     private func applyExpandedChrome() {

@@ -7,7 +7,7 @@ final class ChatViewModel {
     var threads: [ChatThread]
     var activeThreadId: String
     var selectedProjectId: String
-    var selectedModelId = ChatModels.defaultModel.id
+    var selectedModelId = ""
     var isSessionBrowserOpen = false
     var isSettingsOpen = false
     var recentlyOpenedProjectIds: [String] = []
@@ -27,6 +27,17 @@ final class ChatViewModel {
         recentlyOpenedProjectIds = seed.compactMap { thread in
             seenProjects.insert(thread.projectId).inserted ? thread.projectId : nil
         }
+        syncSelectedModel()
+    }
+
+    var menuModels: [ChatModel] {
+        preferences.menuModels
+    }
+
+    func syncSelectedModel() {
+        let models = menuModels
+        if models.contains(where: { $0.id == selectedModelId }) { return }
+        selectedModelId = models.first?.id ?? ""
     }
 
     var activeThread: ChatThread {
@@ -72,12 +83,32 @@ final class ChatViewModel {
         }
 
         let snapshot = session.messages
+        let modelId = selectedModelId
+        let apiKey = preferences.openRouterApiKey
         Task {
-            let reply = await DemoAgent.reply(for: snapshot)
             let replyAt = Date().timeIntervalSince1970
+            let content: String
+            do {
+                guard preferences.hasOpenRouterApiKey else {
+                    throw OpenRouterClient.ClientError.missingApiKey
+                }
+                guard !modelId.isEmpty else {
+                    throw OpenRouterClient.ClientError.http(
+                        status: 0,
+                        message: "Choose at least one model in Settings."
+                    )
+                }
+                content = try await ChatAgent.reply(
+                    messages: snapshot,
+                    modelId: modelId,
+                    apiKey: apiKey
+                )
+            } catch {
+                content = error.localizedDescription
+            }
             mutateActiveThread { thread in
                 thread.session.reduce(.appendAssistant(
-                    content: reply,
+                    content: content,
                     id: UUID().uuidString,
                     createdAt: replyAt
                 ))

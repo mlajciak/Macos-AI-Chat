@@ -85,6 +85,46 @@ final class AppPreferences {
         static let fontFamily = "xyzt.fontFamily"
         static let fontFamilyMode = "xyzt.fontFamilyMode"
         static let customFontFamily = "xyzt.customFontFamily"
+        static let menuModelIds = "xyzt.menuModelIds"
+        static let modelLabels = "xyzt.modelLabels"
+    }
+
+    var menuModelIds: [String] {
+        didSet { UserDefaults.standard.set(menuModelIds, forKey: Keys.menuModelIds) }
+    }
+
+    private(set) var modelLabels: [String: String] {
+        didSet { Self.saveModelLabels(modelLabels) }
+    }
+
+    var openRouterApiKey: String {
+        didSet { OpenRouterCredentialStore.save(openRouterApiKey) }
+    }
+
+    var hasOpenRouterApiKey: Bool {
+        !openRouterApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var menuModels: [ChatModel] {
+        ChatModelCatalog.menuModels(menuModelIds: menuModelIds, labels: modelLabels)
+    }
+
+    func setMenuModelEnabled(_ model: OpenRouterClient.Model, enabled: Bool) {
+        var labels = modelLabels
+        labels[model.id] = model.name
+        modelLabels = labels
+
+        var ids = menuModelIds
+        if enabled {
+            if !ids.contains(model.id) { ids.append(model.id) }
+        } else {
+            ids.removeAll { $0 == model.id }
+        }
+        menuModelIds = ids
+    }
+
+    func isMenuModelEnabled(_ modelId: String) -> Bool {
+        menuModelIds.contains(modelId)
     }
 
     var theme: AppTheme {
@@ -120,6 +160,9 @@ final class AppPreferences {
 
     init() {
         let defaults = UserDefaults.standard
+        menuModelIds = defaults.stringArray(forKey: Keys.menuModelIds) ?? []
+        modelLabels = Self.loadModelLabels()
+        openRouterApiKey = OpenRouterCredentialStore.read() ?? ""
         if let raw = defaults.string(forKey: Keys.theme),
            let stored = AppTheme(rawValue: raw) {
             theme = stored
@@ -173,6 +216,18 @@ final class AppPreferences {
             return (.mono, "")
         }
         return (.custom, trimmed)
+    }
+
+    private static func loadModelLabels() -> [String: String] {
+        guard let data = UserDefaults.standard.data(forKey: Keys.modelLabels),
+              let decoded = try? JSONDecoder().decode([String: String].self, from: data)
+        else { return [:] }
+        return decoded
+    }
+
+    private static func saveModelLabels(_ labels: [String: String]) {
+        guard let data = try? JSONEncoder().encode(labels) else { return }
+        UserDefaults.standard.set(data, forKey: Keys.modelLabels)
     }
 
     static func parsePointSize(_ text: String) -> CGFloat {

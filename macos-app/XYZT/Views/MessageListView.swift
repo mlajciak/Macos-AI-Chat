@@ -7,6 +7,7 @@ struct MessageListView: View {
     var bottomInset: CGFloat = 0
     /// When set, message column is capped and centered (expanded window).
     var contentMaxWidth: CGFloat?
+    @Environment(\.appFontSettings) private var fontSettings
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -14,12 +15,12 @@ struct MessageListView: View {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     if messages.isEmpty {
                         Text("Ask anything (demo mode)")
-                            .font(AppTypography.mono(size: AppTypography.bodySize))
+                            .appFont(.body, settings: fontSettings)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                     } else {
                         ForEach(messages) { message in
-                            MessageBubbleView(message: message)
+                            MessageBubbleView(message: message, fontSettings: fontSettings)
                                 .id(message.id)
                         }
                     }
@@ -29,7 +30,7 @@ struct MessageListView: View {
                             ProgressView()
                                 .controlSize(.small)
                             Text("Thinking…")
-                                .font(AppTypography.mono(size: AppTypography.captionSize))
+                                .appFont(.caption, settings: fontSettings)
                                 .foregroundStyle(.secondary)
                             Spacer(minLength: 0)
                         }
@@ -47,11 +48,12 @@ struct MessageListView: View {
                 .padding(.bottom, bottomInset)
                 .frame(maxWidth: contentMaxWidth ?? .infinity)
                 .frame(maxWidth: .infinity)
+                .appScrollStyle()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentMargins(.top, topInset, for: .scrollIndicators)
             .contentMargins(.bottom, bottomInset, for: .scrollIndicators)
-            .scrollIndicators(.automatic, axes: .vertical)
+            .appVerticalScrollIndicators()
             .onChange(of: messages.count) { _, _ in scrollToBottom(proxy) }
             .onChange(of: isStreaming) { _, streaming in
                 if streaming { scrollToBottom(proxy) }
@@ -60,12 +62,11 @@ struct MessageListView: View {
     }
 
     private func scrollToBottom(_ proxy: ScrollViewProxy) {
-        withAnimation(.easeOut(duration: 0.2)) {
-            if isStreaming {
-                proxy.scrollTo("streaming-indicator", anchor: .bottom)
-            } else {
-                proxy.scrollTo("scroll-end", anchor: .bottom)
-            }
+        let target = isStreaming ? "streaming-indicator" : "scroll-end"
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            proxy.scrollTo(target, anchor: .bottom)
         }
     }
 }

@@ -4,13 +4,25 @@ import SwiftUI
 struct ChatInputBar: View {
     @Binding var draft: String
     @Binding var selectedModelId: String
+    let menuModels: [ChatModel]
+    let fontSettings: AppFontSettings
+    let isStreaming: Bool
     let onSend: () -> Void
     var expandedMode: Bool = false
     var usesHudMaterial: Bool = false
     @FocusState private var isFocused: Bool
+    @State private var inputHeight: CGFloat = 24
 
     private var glassMaterial: NSVisualEffectView.Material {
         usesHudMaterial ? .hudWindow : .popover
+    }
+
+    private var minInputHeight: CGFloat {
+        ChatInputMetrics.minHeight(for: fontSettings)
+    }
+
+    private var maxInputHeight: CGFloat {
+        ChatInputMetrics.maxHeight(for: fontSettings)
     }
 
     var body: some View {
@@ -22,25 +34,60 @@ struct ChatInputBar: View {
         .background {
             GlassSurface.input(material: glassMaterial)
         }
+        .overlay {
+            if isStreaming {
+                StreamingInputBorder(cornerRadius: 14)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isStreaming)
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .onTapGesture {
             isFocused = true
         }
+        .onAppear {
+            syncInputHeightToFont()
+        }
+        .onChange(of: fontSettings) { _, _ in
+            syncInputHeightToFont()
+        }
+        .onChange(of: draft) { _, newValue in
+            if newValue.isEmpty {
+                inputHeight = minInputHeight
+            }
+        }
     }
 
     private var messageRow: some View {
-        TextField("Message \(AppBranding.name)…", text: $draft, axis: .vertical)
-            .textFieldStyle(.plain)
-            .font(AppTypography.mono(size: AppTypography.bodySize))
-            .lineLimit(2 ... 4)
-            .focused($isFocused)
-            .onSubmit { submit() }
+        ZStack(alignment: .topLeading) {
+            ChatInputTextView(
+                text: $draft,
+                height: $inputHeight,
+                fontSettings: fontSettings,
+                expandedMode: expandedMode,
+                onSubmit: submit
+            )
+            .frame(height: inputHeight)
             .frame(maxWidth: .infinity, alignment: .topLeading)
+
+            if draft.isEmpty {
+                Text("Message \(AppBranding.name)…")
+                    .font(fontSettings.font(for: .body))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
     private var controlRow: some View {
         HStack(alignment: .center, spacing: 8) {
-            ModelSelectorView(selectedModelId: $selectedModelId, isDisabled: false)
+            ModelSelectorView(
+                selectedModelId: $selectedModelId,
+                models: menuModels,
+                fontSettings: fontSettings,
+                glassMaterial: glassMaterial,
+                isDisabled: false
+            )
             Spacer(minLength: 4)
             sendButton
         }
@@ -48,12 +95,8 @@ struct ChatInputBar: View {
 
     private var sendButton: some View {
         Button(action: submit) {
-            HStack(spacing: 4) {
-                Text("Send")
-                    .font(AppTypography.mono(size: AppTypography.captionSize, weight: .medium))
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 11, weight: .bold))
-            }
+            Image(systemName: "arrow.up")
+                .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .bold))
             .foregroundStyle(canSend ? Color.white : Color.secondary.opacity(0.5))
             .padding(.horizontal, 11)
             .padding(.vertical, 6)
@@ -63,7 +106,8 @@ struct ChatInputBar: View {
             }
         }
         .buttonStyle(.plain)
-        .disabled(!canSend)
+        .accessibilityLabel("Send")
+        .disabled(!canSend || isStreaming)
         .keyboardShortcut(.return, modifiers: expandedMode ? .command : [])
     }
 
@@ -74,6 +118,12 @@ struct ChatInputBar: View {
     private func submit() {
         guard canSend else { return }
         onSend()
+        inputHeight = minInputHeight
         isFocused = true
+    }
+
+    private func syncInputHeightToFont() {
+        let minH = minInputHeight
+        inputHeight = draft.isEmpty ? minH : min(max(inputHeight, minH), maxInputHeight)
     }
 }

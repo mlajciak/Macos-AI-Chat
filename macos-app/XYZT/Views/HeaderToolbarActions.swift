@@ -5,6 +5,8 @@ struct HeaderToolbarActions: View {
     let windowAction: WindowAction
     var onClose: (() -> Void)?
 
+    private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
+
     enum WindowAction {
         case expand(action: () -> Void)
         case compact(action: () -> Void)
@@ -35,21 +37,24 @@ struct HeaderToolbarActions: View {
         HStack(spacing: 0) {
             HeaderToolbarIconButton(
                 systemImage: "square.and.pencil",
-                tooltip: "New chat session"
+                tooltip: "New chat session",
+                fontSettings: fontSettings
             ) {
                 viewModel.createNewChat()
             }
 
             HeaderToolbarIconButton(
                 systemImage: "gearshape",
-                tooltip: "Settings"
+                tooltip: "Settings",
+                fontSettings: fontSettings
             ) {
                 viewModel.toggleSettings()
             }
 
             HeaderToolbarIconButton(
                 systemImage: windowAction.systemImage,
-                tooltip: windowAction.tooltip
+                tooltip: windowAction.tooltip,
+                fontSettings: fontSettings
             ) {
                 windowAction.perform()
             }
@@ -58,8 +63,8 @@ struct HeaderToolbarActions: View {
                 HeaderToolbarIconButton(
                     systemImage: "xmark",
                     tooltip: "Hide \(AppBranding.name)",
-                    iconSize: 11,
-                    iconWeight: .semibold
+                    fontSettings: fontSettings,
+                    weight: .semibold
                 ) {
                     onClose()
                 }
@@ -68,23 +73,50 @@ struct HeaderToolbarActions: View {
     }
 }
 
-private struct HeaderToolbarIconButton: View {
+/// Expand-to-full-window and hide — used on the collapsed compact strip.
+struct CompactWindowToolbar: View {
+    let fontSettings: AppFontSettings
+    let onExpandWindow: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            HeaderToolbarIconButton(
+                systemImage: "arrow.up.left.and.arrow.down.right",
+                tooltip: "Expand window",
+                fontSettings: fontSettings
+            ) {
+                onExpandWindow()
+            }
+
+            HeaderToolbarIconButton(
+                systemImage: "xmark",
+                tooltip: "Hide \(AppBranding.name)",
+                fontSettings: fontSettings,
+                weight: .semibold
+            ) {
+                onClose()
+            }
+        }
+    }
+}
+
+struct HeaderToolbarIconButton: View {
     let systemImage: String
     let tooltip: String
-    var iconSize: CGFloat = 12
-    var iconWeight: Font.Weight = .medium
+    let fontSettings: AppFontSettings
+    var weight: AppTypography.Weight = .medium
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: iconSize, weight: iconWeight))
-                .frame(width: 16, height: 16)
-        }
-        .buttonStyle(.plain)
-        .padding(4)
-        .contentShape(Rectangle())
-        .macTooltip(tooltip)
+        MacNativeIconButton(
+            systemImage: systemImage,
+            tooltip: tooltip,
+            iconPointSize: fontSettings.iconPointSize,
+            weight: weight,
+            action: action
+        )
+        .frame(width: 24, height: 24)
         .accessibilityLabel(tooltip)
     }
 }

@@ -6,6 +6,7 @@ struct FloatingMenuOverlay<Content: View>: View {
     let title: String
     let closeHelp: String
     let usesHudMaterial: Bool
+    let fontSettings: AppFontSettings
     let onClose: () -> Void
     @ViewBuilder var content: () -> Content
 
@@ -46,20 +47,20 @@ struct FloatingMenuOverlay<Content: View>: View {
     private var menuHeader: some View {
         HStack(alignment: .center, spacing: 8) {
             Text(title)
-                .fontWeight(.medium)
+                .appFont(.body, weight: .medium, settings: fontSettings)
                 .foregroundStyle(.primary)
 
             Spacer(minLength: 8)
 
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help(closeHelp)
+            MacNativeIconButton(
+                systemImage: "xmark",
+                tooltip: closeHelp,
+                iconPointSize: fontSettings.iconPointSize,
+                weight: .semibold,
+                symbolColor: .secondaryLabelColor,
+                action: onClose
+            )
+            .frame(width: 28, height: 28)
             .accessibilityLabel(closeHelp)
         }
         .frame(height: FloatingChromeMetrics.headerBarHeight)

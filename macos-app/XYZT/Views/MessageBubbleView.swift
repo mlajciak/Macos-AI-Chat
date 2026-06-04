@@ -9,6 +9,7 @@ enum MessageListLayout {
 
 struct MessageBubbleView: View {
     let message: ChatMessage
+    let fontSettings: AppFontSettings
 
     private var isUser: Bool { message.role == .user }
 
@@ -16,11 +17,11 @@ struct MessageBubbleView: View {
         if isUser {
             HStack {
                 Spacer(minLength: 40)
-                UserMessageBubble(content: message.content)
+                UserMessageBubble(content: message.content, fontSettings: fontSettings)
             }
         } else {
             Text(message.content)
-                .font(AppTypography.mono(size: AppTypography.bodySize))
+                .appFont(.body, settings: fontSettings)
                 .foregroundStyle(.primary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -31,6 +32,7 @@ struct MessageBubbleView: View {
 
 private struct UserMessageBubble: View {
     let content: String
+    let fontSettings: AppFontSettings
     @State private var isExpanded = false
     @State private var measuredTextHeight: CGFloat = 0
 
@@ -97,7 +99,7 @@ private struct UserMessageBubble: View {
 
     private var messageText: some View {
         Text(content)
-            .font(AppTypography.mono(size: AppTypography.bodySize))
+            .appFont(.body, settings: fontSettings)
             .foregroundStyle(Color.white)
             .textSelection(.enabled)
             .multilineTextAlignment(.leading)
@@ -126,7 +128,7 @@ private struct UserMessageBubble: View {
             }
         } label: {
             Text("Click to expand")
-                .font(AppTypography.mono(size: AppTypography.captionSize))
+                .appFont(.caption, settings: fontSettings)
                 .foregroundStyle(Color.white)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
@@ -148,7 +150,7 @@ private struct UserMessageBubble: View {
             }
         } label: {
             Text("Click to collapse")
-                .font(AppTypography.mono(size: AppTypography.captionSize))
+                .appFont(.caption, settings: fontSettings)
                 .foregroundStyle(Color.white.opacity(0.92))
         }
         .buttonStyle(.plain)

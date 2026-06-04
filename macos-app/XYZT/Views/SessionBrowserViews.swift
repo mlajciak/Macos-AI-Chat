@@ -5,29 +5,33 @@ import SwiftUI
 struct SessionBreadcrumbButton: View {
     @Bindable var viewModel: ChatViewModel
 
+    private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
+
     var body: some View {
         Button(action: viewModel.toggleSessionBrowser) {
             HStack(spacing: 5) {
                 Image(systemName: "folder")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
                     .foregroundStyle(.secondary)
                 Text(viewModel.activeProject.name)
-                    .fontWeight(.medium)
+                    .font(fontSettings.font(for: .caption, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text("/")
+                    .font(fontSettings.font(for: .caption))
                     .foregroundStyle(.tertiary)
                 Text(viewModel.activeChatTitle)
+                    .font(fontSettings.font(for: .caption))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .semibold))
                     .foregroundStyle(.tertiary)
                     .rotationEffect(.degrees(viewModel.isSessionBrowserOpen ? 180 : 0))
             }
         }
         .buttonStyle(.plain)
-        .help("Browse projects and sessions")
+        .macTooltip("Browse projects and sessions")
     }
 }
 
@@ -37,22 +41,29 @@ struct SessionBrowserOverlay: View {
     @Bindable var viewModel: ChatViewModel
     let usesHudMaterial: Bool
 
+    private var fontSettings: AppFontSettings { viewModel.preferences.fontSettings }
+
     var body: some View {
         FloatingMenuOverlay(
             title: "Switch session",
             closeHelp: "Close session menu",
             usesHudMaterial: usesHudMaterial,
+            fontSettings: fontSettings,
             onClose: { viewModel.closeOverlays() }
         ) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    OpenFolderMenuRow(action: viewModel.openProjectFolder)
+                    OpenFolderMenuRow(
+                        fontSettings: fontSettings,
+                        action: viewModel.openProjectFolder
+                    )
 
                     ForEach(viewModel.recentProjects) { project in
                         ProjectFolderSection(
                             project: project,
                             threads: viewModel.threads(for: project.id),
                             activeThreadId: viewModel.activeThreadId,
+                            fontSettings: fontSettings,
                             onSelect: { viewModel.selectThread($0) },
                             onDelete: { viewModel.deleteThread($0) }
                         )
@@ -60,7 +71,9 @@ struct SessionBrowserOverlay: View {
                 }
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
+                .appScrollStyle()
             }
+            .scrollbarsWhenNeeded()
         }
     }
 }
@@ -68,6 +81,7 @@ struct SessionBrowserOverlay: View {
 // MARK: - Open folder
 
 private struct OpenFolderMenuRow: View {
+    let fontSettings: AppFontSettings
     let action: () -> Void
 
     @State private var isHovered = false
@@ -76,26 +90,25 @@ private struct OpenFolderMenuRow: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: "folder.badge.plus")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 18)
 
                 Text("Open folder…")
+                    .font(fontSettings.font(for: .caption))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
             }
-            .padding(.horizontal, 8)
-            .frame(height: 32)
-            .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isHovered ? Color.primary.opacity(0.07) : Color.clear)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding(.horizontal, 10)
+            .pillRow()
+            .pillBackground(
+                fill: isHovered ? Color.primary.opacity(0.07) : Color.clear
+            )
         }
         .buttonStyle(.plain)
-        .help("Open a project folder on disk")
+        .macTooltip("Open a project folder on disk")
         .onHover { isHovered = $0 }
     }
 }
@@ -106,6 +119,7 @@ private struct ProjectFolderSection: View {
     let project: Project
     let threads: [ChatThread]
     let activeThreadId: String
+    let fontSettings: AppFontSettings
     let onSelect: (String) -> Void
     let onDelete: (String) -> Void
 
@@ -113,10 +127,10 @@ private struct ProjectFolderSection: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Image(systemName: "folder.fill")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(fontSettings.font(size: fontSettings.iconPointSize, weight: .medium))
                     .foregroundStyle(.secondary)
                 Text(project.name)
-                    .fontWeight(.medium)
+                    .font(fontSettings.font(for: .caption, weight: .medium))
                     .foregroundStyle(.primary)
             }
             .padding(.leading, 2)
@@ -126,6 +140,7 @@ private struct ProjectFolderSection: View {
                     SessionTreeRow(
                         thread: thread,
                         isActive: thread.id == activeThreadId,
+                        fontSettings: fontSettings,
                         onSelect: { onSelect(thread.id) },
                         onDelete: { onDelete(thread.id) }
                     )
@@ -142,6 +157,7 @@ private struct SessionTreeRow: View {
 
     let thread: ChatThread
     let isActive: Bool
+    let fontSettings: AppFontSettings
     let onSelect: () -> Void
     let onDelete: () -> Void
 
@@ -152,6 +168,7 @@ private struct SessionTreeRow: View {
             SessionStatusIndicator(isRunning: thread.isRunning)
 
             Text(thread.title)
+                .font(fontSettings.font(for: .caption))
                 .foregroundStyle(isActive ? Color.accentColor : .primary)
                 .lineLimit(1)
 
@@ -159,29 +176,26 @@ private struct SessionTreeRow: View {
 
             HStack(spacing: 8) {
                 Text(SessionRelativeTime.label(since: thread.lastActiveAt))
+                    .font(fontSettings.font(for: .caption))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(fontSettings.font(size: fontSettings.smallIconPointSize, weight: .medium))
                         .frame(width: 16, height: 16)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.red.opacity(0.85))
-                .help("Delete session")
+                .macTooltip("Delete session")
             }
             .frame(width: Self.trailingSlotWidth, alignment: .trailing)
             .opacity(isHovered ? 1 : 0)
             .allowsHitTesting(isHovered)
         }
-        .padding(.horizontal, 8)
-        .frame(height: Self.rowHeight)
-        .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(rowBackground)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.horizontal, 10)
+        .pillRow(height: Self.rowHeight)
+        .pillBackground(fill: rowBackground)
         .onTapGesture(perform: onSelect)
         .onHover { isHovered = $0 }
     }

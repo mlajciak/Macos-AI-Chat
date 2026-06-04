@@ -5,31 +5,45 @@ private let compactPanelCornerRadius: CGFloat = 12
 struct ChatRootView: View {
     @Bindable var viewModel: ChatViewModel
     let mode: WindowMode
+    let compactPresentation: CompactPresentation
     let onExpand: () -> Void
     let onCompact: () -> Void
+    let onRestoreCompactPanel: () -> Void
     let onClose: () -> Void
     var onCompactResizeStarted: (() -> Void)?
     var onCompactResizeEnded: (() -> Void)?
+    var onCollapseToStrip: (() -> Void)?
+
+    private var isCompactStrip: Bool {
+        mode == .compact && compactPresentation == .strip
+    }
 
     var body: some View {
         Group {
             if mode == .compact {
-                compactBody
+                if isCompactStrip {
+                    compactStripBody
+                } else {
+                    compactBody
+                }
             } else {
                 expandedBody
             }
         }
+        .appFontEnvironment(viewModel.preferences)
+        .appMonoFont()
         .overlay {
-            headerOverlays(usesHudMaterial: mode == .compact)
+            if !isCompactStrip {
+                headerOverlays(usesHudMaterial: mode == .compact)
+                    .appFontContext(viewModel.preferences.fontSettings)
+            }
         }
         .animation(.easeInOut(duration: 0.22), value: viewModel.isSessionBrowserOpen)
         .animation(.easeInOut(duration: 0.22), value: viewModel.isSettingsOpen)
-        .animation(.easeInOut(duration: 0.22), value: viewModel.preferences.bodyPointSize)
-        .animation(.easeInOut(duration: 0.22), value: viewModel.preferences.fontFamilyMode)
-        .animation(.easeInOut(duration: 0.22), value: viewModel.preferences.customFontFamily)
-        .animation(.easeInOut(duration: 0.22), value: viewModel.preferences.theme)
-        .appFontEnvironment(viewModel.preferences)
-        .appMonoFont()
+        .animation(.easeInOut(duration: 0.22), value: compactPresentation)
+        .onChange(of: viewModel.preferences.menuModelIds) { _, _ in
+            viewModel.syncSelectedModel()
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -50,10 +64,46 @@ struct ChatRootView: View {
         }
     }
 
+    private var compactStripBody: some View {
+        CompactStripBarView(
+            fontSettings: viewModel.preferences.fontSettings,
+            onRestorePanel: onRestoreCompactPanel,
+            onExpandWindow: onExpand,
+            onClose: onClose
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            VisualEffectBackground(
+                material: .hudWindow,
+                blendingMode: .behindWindow,
+                emphasized: false
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: compactPanelCornerRadius, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+        }
+        .overlay {
+            CompactWindowResizeOverlay(
+                minSize: ChatWindowController.compactStripSize,
+                maxSize: NSSize(
+                    width: ChatWindowController.compactMaxSize.width,
+                    height: ChatWindowController.compactStripSize.height
+                ),
+                isStripMode: true,
+                onResizeStarted: onCompactResizeStarted,
+                onResizeEnded: onCompactResizeEnded
+            )
+            .allowsHitTesting(true)
+        }
+    }
+
     private var compactBody: some View {
         ConversationLayout(
             draft: $viewModel.draft,
             selectedModelId: $viewModel.selectedModelId,
+            menuModels: viewModel.menuModels,
             messages: viewModel.session.messages,
             isStreaming: viewModel.session.isStreaming,
             expandedMode: false,
@@ -88,8 +138,10 @@ struct ChatRootView: View {
                     width: ChatWindowController.compactMaxSize.width,
                     height: ChatWindowController.compactMaxSize.height
                 ),
+                isStripMode: false,
                 onResizeStarted: onCompactResizeStarted,
-                onResizeEnded: onCompactResizeEnded
+                onResizeEnded: onCompactResizeEnded,
+                onCollapseToStrip: onCollapseToStrip
             )
             .allowsHitTesting(true)
         }
@@ -99,6 +151,7 @@ struct ChatRootView: View {
         ConversationLayout(
             draft: $viewModel.draft,
             selectedModelId: $viewModel.selectedModelId,
+            menuModels: viewModel.menuModels,
             messages: viewModel.session.messages,
             isStreaming: viewModel.session.isStreaming,
             expandedMode: true,

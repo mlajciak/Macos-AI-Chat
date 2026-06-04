@@ -4,11 +4,13 @@ import SwiftUI
 struct ConversationLayout<Header: View>: View {
     @Binding var draft: String
     @Binding var selectedModelId: String
+    let menuModels: [ChatModel]
     let messages: [ChatMessage]
     let isStreaming: Bool
     let expandedMode: Bool
     let onSend: () -> Void
     var usesHudMaterial: Bool = false
+    @Environment(\.appFontSettings) private var fontSettings
     @ViewBuilder var header: () -> Header
 
     private var glassMaterial: NSVisualEffectView.Material {
@@ -56,6 +58,9 @@ struct ConversationLayout<Header: View>: View {
                     ChatInputBar(
                         draft: $draft,
                         selectedModelId: $selectedModelId,
+                        menuModels: menuModels,
+                        fontSettings: fontSettings,
+                        isStreaming: isStreaming,
                         onSend: onSend,
                         expandedMode: expandedMode,
                         usesHudMaterial: usesHudMaterial
@@ -77,6 +82,7 @@ extension ConversationLayout where Header == EmptyView {
     init(
         draft: Binding<String>,
         selectedModelId: Binding<String>,
+        menuModels: [ChatModel],
         messages: [ChatMessage],
         isStreaming: Bool,
         expandedMode: Bool,
@@ -85,6 +91,7 @@ extension ConversationLayout where Header == EmptyView {
     ) {
         self._draft = draft
         self._selectedModelId = selectedModelId
+        self.menuModels = menuModels
         self.messages = messages
         self.isStreaming = isStreaming
         self.expandedMode = expandedMode

@@ -15,7 +15,9 @@
 		B1000005 /* WindowMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000005 /* WindowMode.swift */; };
 		B1000006 /* ChatWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000006 /* ChatWindowController.swift */; };
 		B1000022 /* KeyableWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000022 /* KeyableWindow.swift */; };
-		B1000007 /* DemoAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000007 /* DemoAgent.swift */; };
+		B1000007 /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000007 /* ChatAgent.swift */; };
+		B1000050 /* OpenRouterClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000050 /* OpenRouterClient.swift */; };
+		B1000051 /* OpenRouterCredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000051 /* OpenRouterCredentialStore.swift */; };
 		B1000008 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000008 /* ChatViewModel.swift */; };
 		B1000009 /* VisualEffectBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000009 /* VisualEffectBackground.swift */; };
 		B1000010 /* MessageBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000010 /* MessageBubbleView.swift */; };
@@ -39,6 +41,12 @@
 		B1000040 /* SettingsOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000040 /* SettingsOverlay.swift */; };
 		B1000041 /* ChatViewModel+Overlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000041 /* ChatViewModel+Overlays.swift */; };
 		B1000042 /* MacTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000042 /* MacTooltip.swift */; };
+		B1000043 /* AppFontDropdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000043 /* AppFontDropdown.swift */; };
+		B1000044 /* ChatInputTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000044 /* ChatInputTextView.swift */; };
+		B1000045 /* AppChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000045 /* AppChrome.swift */; };
+		B1000052 /* SmoothScrolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000052 /* SmoothScrolling.swift */; };
+		B1000053 /* MacHelpTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000053 /* MacHelpTag.swift */; };
+		B1000054 /* StreamingInputBorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000054 /* StreamingInputBorder.swift */; };
 		B1000019 /* ModelSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000019 /* ModelSelectorView.swift */; };
 		B1000023 /* GlassSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000023 /* GlassSurface.swift */; };
 		B1000024 /* FloatingHeaderChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000024 /* FloatingHeaderChrome.swift */; };
@@ -46,8 +54,7 @@
 		B1000031 /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F1000031 /* JetBrainsMono-Regular.ttf */; };
 		B1000032 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F1000032 /* JetBrainsMono-Medium.ttf */; };
 		B1000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1000020 /* Assets.xcassets */; };
-		B1000021 /* demo-responses.json in Resources */ = {isa = PBXBuildFile; fileRef = F1000021 /* demo-responses.json */; };
-		B1000030 /* DemoAgentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000030 /* DemoAgentTests.swift */; };
+		B1000030 /* OpenRouterClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000030 /* OpenRouterClientTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,7 +78,9 @@
 		F1000005 /* WindowMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMode.swift; sourceTree = "<group>"; };
 		F1000006 /* ChatWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWindowController.swift; sourceTree = "<group>"; };
 		F1000022 /* KeyableWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyableWindow.swift; sourceTree = "<group>"; };
-		F1000007 /* DemoAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAgent.swift; sourceTree = "<group>"; };
+		F1000007 /* ChatAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAgent.swift; sourceTree = "<group>"; };
+		F1000050 /* OpenRouterClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterClient.swift; sourceTree = "<group>"; };
+		F1000051 /* OpenRouterCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterCredentialStore.swift; sourceTree = "<group>"; };
 		F1000008 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		F1000009 /* VisualEffectBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectBackground.swift; sourceTree = "<group>"; };
 		F1000010 /* MessageBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubbleView.swift; sourceTree = "<group>"; };
@@ -94,8 +103,7 @@
 		F1000031 /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Regular.ttf"; sourceTree = "<group>"; };
 		F1000032 /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
 		F1000020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F1000021 /* demo-responses.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "demo-responses.json"; sourceTree = "<group>"; };
-		F1000030 /* DemoAgentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAgentTests.swift; sourceTree = "<group>"; };
+		F1000030 /* OpenRouterClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterClientTests.swift; sourceTree = "<group>"; };
 		F1000035 /* SessionBrowserViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBrowserViews.swift; sourceTree = "<group>"; };
 		F1000036 /* ChatViewModel+SessionBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatViewModel+SessionBrowser.swift"; sourceTree = "<group>"; };
 		F1000037 /* HeaderToolbarActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeaderToolbarActions.swift; sourceTree = "<group>"; };
@@ -104,6 +112,12 @@
 		F1000040 /* SettingsOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsOverlay.swift; sourceTree = "<group>"; };
 		F1000041 /* ChatViewModel+Overlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatViewModel+Overlays.swift"; sourceTree = "<group>"; };
 		F1000042 /* MacTooltip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTooltip.swift; sourceTree = "<group>"; };
+		F1000043 /* AppFontDropdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFontDropdown.swift; sourceTree = "<group>"; };
+		F1000044 /* ChatInputTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputTextView.swift; sourceTree = "<group>"; };
+		F1000045 /* AppChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppChrome.swift; sourceTree = "<group>"; };
+		F1000052 /* SmoothScrolling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmoothScrolling.swift; sourceTree = "<group>"; };
+		F1000053 /* MacHelpTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHelpTag.swift; sourceTree = "<group>"; };
+		F1000054 /* StreamingInputBorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingInputBorder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,7 +167,7 @@
 		G1000003 /* XYZTTests */ = {
 			isa = PBXGroup;
 			children = (
-				F1000030 /* DemoAgentTests.swift */,
+				F1000030 /* OpenRouterClientTests.swift */,
 			);
 			path = XYZTTests;
 			sourceTree = "<group>";
@@ -183,7 +197,9 @@
 		G1000011 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				F1000007 /* DemoAgent.swift */,
+				F1000007 /* ChatAgent.swift */,
+				F1000050 /* OpenRouterClient.swift */,
+				F1000051 /* OpenRouterCredentialStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -219,6 +235,12 @@
 				F1000039 /* FloatingMenuOverlay.swift */,
 				F1000040 /* SettingsOverlay.swift */,
 				F1000042 /* MacTooltip.swift */,
+				F1000053 /* MacHelpTag.swift */,
+				F1000043 /* AppFontDropdown.swift */,
+				F1000044 /* ChatInputTextView.swift */,
+				F1000045 /* AppChrome.swift */,
+				F1000052 /* SmoothScrolling.swift */,
+				F1000054 /* StreamingInputBorder.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -238,7 +260,6 @@
 			isa = PBXGroup;
 			children = (
 				F1000020 /* Assets.xcassets */,
-				F1000021 /* demo-responses.json */,
 				G1000017 /* Fonts */,
 			);
 			path = Resources;
@@ -268,7 +289,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = L1000001 /* Build configuration list for PBXNativeTarget "XYZT" */;
 			buildPhases = (
-				S1000001 /* Sync demo fixtures */,
 				R1000001 /* Sources */,
 				X1000001 /* Frameworks */,
 				R1000002 /* Resources */,
@@ -358,26 +378,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		S1000001 /* Sync demo fixtures */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/../core-app/fixtures/demo-responses.json",
-			);
-			name = "Sync demo fixtures";
-			outputPaths = (
-				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/demo-responses.json",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\nSRC=\"${SRCROOT}/../core-app/fixtures/demo-responses.json\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/demo-responses.json\"\nmkdir -p \"$(dirname \"$DEST\")\"\ncp \"$SRC\" \"$DEST\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		R1000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -391,7 +391,9 @@
 				B1000005 /* WindowMode.swift in Sources */,
 				B1000006 /* ChatWindowController.swift in Sources */,
 				B1000022 /* KeyableWindow.swift in Sources */,
-				B1000007 /* DemoAgent.swift in Sources */,
+				B1000007 /* ChatAgent.swift in Sources */,
+				B1000050 /* OpenRouterClient.swift in Sources */,
+				B1000051 /* OpenRouterCredentialStore.swift in Sources */,
 				B1000008 /* ChatViewModel.swift in Sources */,
 				B1000009 /* VisualEffectBackground.swift in Sources */,
 				B1000010 /* MessageBubbleView.swift in Sources */,
@@ -419,6 +421,12 @@
 				B1000040 /* SettingsOverlay.swift in Sources */,
 				B1000041 /* ChatViewModel+Overlays.swift in Sources */,
 				B1000042 /* MacTooltip.swift in Sources */,
+				B1000043 /* AppFontDropdown.swift in Sources */,
+				B1000044 /* ChatInputTextView.swift in Sources */,
+				B1000045 /* AppChrome.swift in Sources */,
+				B1000052 /* SmoothScrolling.swift in Sources */,
+				B1000053 /* MacHelpTag.swift in Sources */,
+				B1000054 /* StreamingInputBorder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -426,7 +434,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B1000030 /* DemoAgentTests.swift in Sources */,
+				B1000030 /* OpenRouterClientTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
